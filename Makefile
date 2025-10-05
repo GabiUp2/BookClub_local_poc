@@ -24,7 +24,6 @@ ensure-uv: ## Install uv locally if not present
 
 venv: ensure-uv ## Create or update .venv with Python 3.11
 	@$(UV) venv .venv --python 3.11
-	@$(PIP) install -U pip wheel
 
 deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 	@[ -f requirements.in ] || cat > requirements.in <<-'REQ'
@@ -41,42 +40,51 @@ deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 	REQ
 
 lock: ensure-uv deps-seed ## Resolve & lock dependencies
-	@$(UV) pip compile requirements.in -o requirements.lock
-	@$(UV) pip compile requirements-dev.in -o requirements-dev.lock -c requirements.lock
+	@$(UV) lock
 
 install: venv lock ## Install from lockfiles into .venv
-	@$(PIP) install -r requirements.lock -r requirements-dev.lock
-	@.venv/bin/pre-commit install || true
+	@$(UV) sync
+	@$(UV) run pre-commit install || true
 
-setup: install ## Full setup (uv + venv + locked deps)
+install-dev: venv lock ## Install app + dev deps from lockfile into .venv
+    @$(UV) sync --all-groups
+    @$(UV) run pre-commit install || true
+
+setup: install-dev ## Full setup (uv + venv + locked deps)
 	@echo "✅ uv environment ready."
 
 run: ## Run the app
 	@GRAFANA_URL=$${GRAFANA_URL:-http://athena:3000} \
-	$(PY) -m book_club.__main__
+	$(UV) run -m book_club.__main__
 
 test: ## Run tests (quiet)
-	@PYTHONPATH=src $(PY) -m pytest -q
+	@PYTHONPATH=src $(UV) run -m pytest -q
 
 coverage: ## Run tests with coverage
-	@PYTHONPATH=src $(PY) -m pytest --cov=src --cov-report=term-missing
+	@PYTHONPATH=src $(UV) run -m pytest --cov=src --cov-report=term-missing
 
 lint: ## Lint (ruff)
-	@.venv/bin/ruff check .
+	@$(UV) run ruff check .
 
 fmt: ## Format (ruff)
-	@.venv/bin/ruff check --fix .
-	@.venv/bin/ruff format .
+	@$(UV) run ruff check --fix .
+	@$(UV) run ruff format .
 
 typecheck: ## Type-check (mypy)
-	@.venv/bin/mypy src
+	@$(UV) run mypy src
 
 clean: ## Remove caches and build artifacts
 	@rm -rf .venv .pytest_cache .mypy_cache dist build *.egg-info
 
 dist: ## Build wheel/sdist (PEP 517; works if pyproject uses PEP 621)
-	@$(PIP) install -U build
-	@$(PY) -m build
+	@$(UV) run -m pip install -U build
+    @$(UV) run -m build
 
 precommit: ## Run pre-commit on all files
-	@.venv/bin/pre-commit run --all-files
+	@$(UV) run pre-commit run --all-files
+
+sync: ensure-uv ## Install app/runtime deps (from lockfile)
+    @$(UV) sync
+
+sync-dev: ensure-uv ## Install app + dev deps (from lockfile)
+    @$(UV) sync --all-groups
