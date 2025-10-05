@@ -42,7 +42,7 @@ deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 
 lock: ensure-uv deps-seed ## Resolve & lock dependencies
 	@$(UV) pip compile requirements.in -o requirements.lock
-	@$(UV) pip compile requirements-dev.in -o requirements-dev.lock -r requirements.lock
+	@$(UV) pip compile requirements-dev.in -o requirements-dev.lock -c requirements.lock
 
 install: venv lock ## Install from lockfiles into .venv
 	@$(PIP) install -r requirements.lock -r requirements-dev.lock
