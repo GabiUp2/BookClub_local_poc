@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+.pytest_cache/
+.coverage
+dist/
+build/
+
+# IDE
+.vscode/
+.windsurf/*
+!.windsurf/rules.md
+.cursor/*
+
+# OS
+.DS_Store
+
+# Logs
+logs/
