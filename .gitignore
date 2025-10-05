@@ -20,3 +20,8 @@ build/
 
 # Logs
 logs/
+
+# Observability data
+observability/loki/data/*
+observability/prometheus/data/*
+data/qdrant/*
