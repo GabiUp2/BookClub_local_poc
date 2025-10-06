@@ -21,6 +21,13 @@ build/
 # Logs
 logs/
 
+# IDEs and tools
+.cursor/
+.vscode/
+.windsurf/
+.ruff_cache/
+.tmux/bin/
+
 # Observability data
 observability/loki/data/*
 observability/prometheus/data/*
