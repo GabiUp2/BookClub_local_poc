@@ -24,4 +24,5 @@ logs/
 # Observability data
 observability/loki/data/*
 observability/prometheus/data/*
+observability/grafana/data/*
 data/qdrant/*

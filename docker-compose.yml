@@ -76,6 +76,26 @@ services:
       - /var/log:/var/log:ro
     command: ["--config.file=/etc/promtail/config.yml"]
 
+  # --- Grafana (Dashboards) ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    ports:
+      - "3000:3000"
+    environment:
+      # Local defaults; consider setting secrets via .env for non-local
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./observability/grafana/data:/var/lib/grafana
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+
 networks:
   default:
     name: bookclub-net
