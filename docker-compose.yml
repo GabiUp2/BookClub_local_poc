@@ -1,10 +1,9 @@
-version: "3.9"
-
 x-env: &default-env
   APP_ENV: local
   STORAGE_DIR: ./storage
   QDRANT_URL: http://qdrant:6333
   PROMETHEUS_SCRAPE: "true"
+
 
 services:
   # --- Vector DB ---
@@ -24,7 +23,7 @@ services:
   # --- App backend (stub) ---
   app:
     build:
-      context: ./backend
+      context: ./src/book_club/app
       dockerfile: Dockerfile
     container_name: bookclub-app
     restart: unless-stopped
