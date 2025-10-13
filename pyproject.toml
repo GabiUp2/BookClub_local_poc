@@ -18,3 +18,12 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.13.3",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: mark test as a unit test",
+    "behaviour: mark test as a behaviour test",
+    "integration: mark test as an integration test",
+    "e2e: mark test as an end-to-end test",
+]
+    
