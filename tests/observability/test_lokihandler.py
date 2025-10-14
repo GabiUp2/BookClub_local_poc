@@ -96,12 +96,48 @@ def make_logger(name: str = "test.loki") -> logging.Logger:
     logger.handlers = []
     return logger
 
-def test_handlers_worker_is_running_on_another_thread(monkeypatch):
-    handler = LokiHandler(url="http://example/loki", batch_size=100, batch_interval=0.5)
-    print(handler._thread)
-    assert handler._thread.is_alive()
+def make_record(msg="hi"):
+    return logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg=msg,
+        args=(),
+        exc_info=None,
+    )
+
+def test_worker_runs_on_separate_thread(monkeypatch):
+    handler = LokiHandler(url="http://example.invalid", batch_size=1, batch_interval=0.001)
+
+    assert handler._thread.is_alive(), "Worker thread didn't start"
+
+    started = threading.Event()
+    worker_ident = {"id": None}
+    def fake_flush(rows):
+        # Runs inside the worker thread
+        worker_ident["id"] = threading.get_ident()
+        started.set()
+
+    # Prevent real network and capture thread identity
+    monkeypatch.setattr(handler, "_flush", fake_flush, raising=True)
+
+    # Act: send one record to trigger a flush on the worker
+    handler.emit(make_record("trigger"))
+
+    # Wait deterministically for the worker to call our fake _flush
+    assert started.wait(timeout=2), "Worker never flushed - did it start?)"
+
+    # Assert: worker's thread != main thread
+    assert worker_ident["id"] is not None
+    assert worker_ident["id"] != threading.get_ident(), "Worker ran on main thread"
+
+    # Assert: extra invariants
+    assert handler._thread.name == "LokiHandler"
+    assert handler._thread.daemon is True
+
+    # Cleanup
     handler.close()
-    assert not handler._thread.is_alive()
 
 def test_fake_client_posts(monkeypatch, patch_httpx_client):
     fake_client = patch_httpx_client()
