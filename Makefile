@@ -90,7 +90,7 @@ sync-dev: ensure-uv ## Install app + dev deps (from lockfile)
 	@$(UV) sync --all-groups
 
 # -------- Docker Compose v2 (installer) --------
-# You can override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
+# To override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
 COMPOSE_VERSION ?= v2.29.2
 
 compose-install: ## Install Docker Compose v2 (Docker APT repo on Ubuntu or user-space fallback)
