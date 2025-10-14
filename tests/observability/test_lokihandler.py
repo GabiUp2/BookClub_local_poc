@@ -19,7 +19,7 @@ from book_club.observability.LokiHandler import LokiHandler
 # import of module for monkeypatching
 import book_club.observability.LokiHandler as loki_module
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.behaviour
 
 
 @dataclass
@@ -95,6 +95,13 @@ def make_logger(name: str = "test.loki") -> logging.Logger:
     # Avoid duplicate handlers across tests
     logger.handlers = []
     return logger
+
+def test_handlers_worker_is_running_on_another_thread(monkeypatch):
+    handler = LokiHandler(url="http://example/loki", batch_size=100, batch_interval=0.5)
+    print(handler._thread)
+    assert handler._thread.is_alive()
+    handler.close()
+    assert not handler._thread.is_alive()
 
 def test_fake_client_posts(monkeypatch, patch_httpx_client):
     fake_client = patch_httpx_client()

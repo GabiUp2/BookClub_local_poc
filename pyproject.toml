@@ -21,7 +21,6 @@ dev = [
 
 [tool.pytest.ini_options]
 markers = [
-    "unit: mark test as a unit test",
     "behaviour: mark test as a behaviour test",
     "integration: mark test as an integration test",
     "e2e: mark test as an end-to-end test",
