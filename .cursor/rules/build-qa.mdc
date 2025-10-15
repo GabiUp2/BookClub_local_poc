@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+
+# Build & QA Workflow
+
+## Make Targets
+Default build/QA via Make targets as defined in [Makefile](mdc:Makefile):
+- `make setup` - Full environment setup
+- `make fmt` - Format code with Ruff
+- `make lint` - Lint with Ruff
+- `make test` - Run tests
+- `make build` - Build package
+- `make publish` - Publish package
+
+## Tool Configuration
+- Use Ruff for formatting and linting
+- Use uv for venvs, lockfiles, builds, and publishing
+- Don't add new tools unless necessary
+- If adding tools, wire them through [pyproject.toml](mdc:pyproject.toml)/Make
+
+## Dependencies
+- Don't add new dependencies for trivial tasks
+- Prefer standard library or existing stack
+- Reference [pyproject.toml](mdc:pyproject.toml) for dependency management

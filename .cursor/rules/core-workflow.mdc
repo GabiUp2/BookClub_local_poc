@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+# Core Development Workflow
+
+## Split Views & Comparisons
+- Enable split views by default for file comparisons
+- Make it trivial to open two files side-by-side
+- Use diff previews before applying changes
+- Keep changes small and reviewable
+
+## Project Structure
+- Assume `src/` layout for Python projects
+- Respect [pyproject.toml](mdc:pyproject.toml) as the single source of truth
+- Reference [Makefile](mdc:Makefile) for build/QA targets
+
+## Code Quality
+- Always show a one-screen diff for each AI edit
+- Explain why changes are made, not just what
+- Prefer structured, reviewable changes over large refactors
+- Use British English in comments, docs, commit messages, and PR text

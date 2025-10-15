@@ -1,0 +1,21 @@
+---
+globs: *.py,test_*.py,*_test.py
+---
+
+# Testing Standards
+
+## Test Framework
+- Use pytest with markers for be, integration, e2e, and perf
+- Generate tests when behaviour changes
+- Add type checks (pyright or mypy) and keep hints/recommendations compatible
+
+## Test Strategy
+- For any non-trivial change, propose/adjust tests first
+- Keep coverage thresholds and fail-under respected
+- Do not disable linters/tests to "make it pass"
+- Fix root causes or clearly justify in the PR text
+
+## Test Planning
+- When proposing refactors, output a minimal test plan and risk notes
+- Default to safe refactors (rename, extract, inline) with explicit before/after behaviour notes
+- Use checklists for risky edits: migration steps, rollback, and verification

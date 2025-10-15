@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+# AI Workflow & Code Quality
+
+## Code Generation
+- Don't generate boilerplate in bulk
+- Create only what's necessary for the current change
+- Keep suggestions concise; prefer one-sentence definitions when introducing a concept
+
+## Documentation
+- Maintain docs/ with architecture notes, ADRs, PUBLIC_API, and test strategy
+- Provide a `make docs` task
+- When AI proposes a design, also propose an ADR stub with trade-offs and alternatives
+
+## Code Standards
+- Treat AI as a design/docs/test assistant
+- AI output is pseudo-code to be rewritten, not production code
+- Never include secrets/credentials
+- Respect .gitignore, .llmignore, and repo policies
+- Use British English in comments, docs, commit messages, and PR text

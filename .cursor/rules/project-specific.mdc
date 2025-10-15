@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+
+# BookClub POC Project-Specific Rules
+
+## Project Context
+This is a **BookClub MVP Local POC** - an internal tool that turns technical PDFs into flashcards and spaced-repetition decks using LLM + retrieval to help engineers retain and apply what they read.
+
+## Architecture & Stack
+- **Vector DB**: Qdrant (localhost:6333)
+- **Observability**: Prometheus (9090), Loki (3100), Grafana
+- **App**: FastAPI backend (port 8000) in Docker
+- **Storage**: Local `./storage` and `./data` directories
+- **Environment**: Docker Compose with multi-service setup
+
+## Key Implementation Areas
+Based on [README.md](mdc:README.md) MVP tasks:
+- `ingest.py` - Parse PDFs → chunk → embed → upsert to Qdrant
+- `generate_flashcards.py` - Retrieval + LLM prompt + JSON output
+- `srs.py` - Spaced repetition system with minimal CLI
+- `anki_export.py` - Export to Anki CSV format
+- Metrics endpoints for ingestion time, chunks, cards generated
+
+## Development Workflow
+- Use `make setup && make qa` for onboarding
+- Run `docker compose up -d` for infrastructure
+- App runs via `make run` or Docker Compose
+- Health check: `curl localhost:8000/healthz`
+
+## File Structure Context
+- Main entry: [main.py](mdc:main.py) (currently stub)
+- App code: [src/book_club/](mdc:src/book_club/)
+- Observability: [observability/](mdc:observability/)
+- Docker config: [docker-compose.yml](mdc:docker-compose.yml)
+- Build config: [Makefile](mdc:Makefile), [pyproject.toml](mdc:pyproject.toml)
+
+## Environment Variables
+- `OPENAI_API_KEY` - For LLM operations
+- `OLLAMA_HOST` - For local models (default: host.docker.internal:11434)
+- `QDRANT_URL` - Vector database endpoint
+- `APP_ENV=local` - Environment setting

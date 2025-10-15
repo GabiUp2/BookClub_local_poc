@@ -12,7 +12,6 @@ build/
 .vscode/
 .windsurf/*
 !.windsurf/rules.md
-.cursor/*
 
 # OS
 .DS_Store
@@ -21,9 +20,6 @@ build/
 logs/
 
 # IDEs and tools
-.cursor/
-.vscode/
-.windsurf/
 .ruff_cache/
 .tmux/bin/
 

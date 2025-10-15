@@ -1,0 +1,35 @@
+---
+globs: *.py,observability/*
+---
+
+# Observability Patterns for BookClub
+
+## Metrics to Track
+Based on MVP requirements, implement these metrics:
+- `bookclub_requests_total` - HTTP request counter
+- `bookclub_ingestion_duration_seconds` - PDF processing time
+- `bookclub_chunks_processed_total` - Number of chunks created
+- `bookclub_cards_generated_total` - Flashcards generated
+- `bookclub_llm_api_calls_total` - LLM API usage
+
+## Logging Structure
+Use structured JSON logging with these fields:
+- `trace_id` - Request correlation
+- `span_id` - Operation correlation  
+- `user_id` - User context (if applicable)
+- `operation` - Operation type (ingest, generate, review)
+- `document_id` - PDF identifier
+- `chunk_count` - Number of chunks processed
+- `card_count` - Number of cards generated
+
+## Grafana Dashboard Context
+- Reference [observability/](mdc:observability/) for dashboard configs
+- Use consistent metric naming for dashboard queries
+- Include both technical and business metrics
+- Set up alerts for critical failures
+
+## Error Handling
+- Log all LLM API errors with retry counts
+- Track PDF parsing failures separately
+- Monitor Qdrant connection issues
+- Alert on high error rates
