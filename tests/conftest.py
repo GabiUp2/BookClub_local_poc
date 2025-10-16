@@ -1,7 +1,6 @@
 # Test configuration to ensure `src/` layout is importable.
 # Uses British English in comments.
 
-import os
 import sys
 from pathlib import Path
 

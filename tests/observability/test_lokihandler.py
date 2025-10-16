@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any, List
 from copy import copy
 
-import pytest 
+import pytest
 
 # Module under test
 from book_club.observability.LokiHandler import LokiHandler
@@ -67,7 +67,9 @@ def patch_httpx_client(monkeypatch):
     def install(fake: FakeHttpxClient | None = None) -> FakeHttpxClient:
         client = fake or FakeHttpxClient()
         fake_holder["client"] = client
-        monkeypatch.setattr(loki_module, "httpx", type("_M", (), {"Client": lambda: client}))
+        monkeypatch.setattr(
+            loki_module, "httpx", type("_M", (), {"Client": lambda: client})
+        )
         return client
 
     return install
@@ -80,6 +82,7 @@ def ensure_sys_available_in_module(monkeypatch):
 
     monkeypatch.setattr(loki_module, "sys", _sys, raising=False)
 
+
 def wait_until(pred, timeout: float = 1.5, step: float = 0.005):
     """Poll until predicate returns True or timeout elapses."""
     deadline = time.time() + timeout
@@ -89,6 +92,7 @@ def wait_until(pred, timeout: float = 1.5, step: float = 0.005):
         time.sleep(step)
     return False
 
+
 def make_logger(name: str = "test.loki") -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -96,9 +100,10 @@ def make_logger(name: str = "test.loki") -> logging.Logger:
     logger.handlers = []
     return logger
 
+
 def make_record(msg="hi"):
     return logging.LogRecord(
-        name="test",
+        name="test_logger",
         level=logging.INFO,
         pathname=__file__,
         lineno=1,
@@ -107,13 +112,17 @@ def make_record(msg="hi"):
         exc_info=None,
     )
 
+
 def test_worker_runs_on_separate_thread(monkeypatch):
-    handler = LokiHandler(url="http://example.invalid", batch_size=1, batch_interval=0.001)
+    handler = LokiHandler(
+        url="http://example.invalid", batch_size=1, batch_interval=0.001
+    )
 
     assert handler._thread.is_alive(), "Worker thread didn't start"
 
     started = threading.Event()
     worker_ident = {"id": None}
+
     def fake_flush(rows):
         # Runs inside the worker thread
         worker_ident["id"] = threading.get_ident()
@@ -139,6 +148,7 @@ def test_worker_runs_on_separate_thread(monkeypatch):
     # Cleanup
     handler.close()
 
+
 def test_fake_client_posts(monkeypatch, patch_httpx_client):
     fake_client = patch_httpx_client()
     handler = LokiHandler(url="http://example/loki", batch_size=100, batch_interval=0.5)
@@ -153,9 +163,12 @@ def test_fake_client_posts(monkeypatch, patch_httpx_client):
     finally:
         handler.close()
 
+
 def test_emit_enqueues_without_post(monkeypatch, patch_httpx_client):
     fake_client = patch_httpx_client()
-    handler = LokiHandler(url="http://example/loki", batch_size=100, batch_interval=0.01)
+    handler = LokiHandler(
+        url="http://example/loki", batch_size=100, batch_interval=0.01
+    )
     try:
         logger = make_logger()
         logger.addHandler(handler)
@@ -196,8 +209,10 @@ def test_flushes_when_batch_size_reached(patch_httpx_client):
 
 
 def test_flushes_on_interval(patch_httpx_client):
-    fake_client = patch_httpx_client() 
-    handler = LokiHandler(url="http://example/loki", batch_size=100, batch_interval=0.02)
+    fake_client = patch_httpx_client()
+    handler = LokiHandler(
+        url="http://example/loki", batch_size=100, batch_interval=0.02
+    )
     try:
         logger = make_logger()
         logger.addHandler(handler)
@@ -235,6 +250,7 @@ def test_handle_error_on_queue_put_failure(monkeypatch, patch_httpx_client):
 
         # Replace handleError on this instance
         monkeypatch.setattr(handler, "handleError", _he)
+
         # Force queue full error
         def _raise_full(item):
             raise queue.Full
@@ -252,7 +268,9 @@ def test_handle_error_on_queue_put_failure(monkeypatch, patch_httpx_client):
         handler.close()
 
 
-def test_flush_catches_post_exception(monkeypatch, patch_httpx_client, ensure_sys_available_in_module, capsys):
+def test_flush_catches_post_exception(
+    monkeypatch, patch_httpx_client, ensure_sys_available_in_module, capsys
+):
     # First post raises, second succeeds
     fake_client = patch_httpx_client(FakeHttpxClient(behaviour=["raise", "ok"]))
     handler = LokiHandler(url="http://example/loki", batch_size=2, batch_interval=10)
@@ -262,7 +280,9 @@ def test_flush_catches_post_exception(monkeypatch, patch_httpx_client, ensure_sy
         logger.info("x1")
         logger.info("x2")  # triggers size-based flush -> raises
         # Wait a bit for the worker to attempt flushing and print error
-        assert wait_until(lambda: len(fake_client.posts) >= 0)  # no-op predicate to yield time
+        assert wait_until(
+            lambda: len(fake_client.posts) >= 0
+        )  # no-op predicate to yield time
         # Now send more to trigger a successful second flush
         logger.info("x3")
         logger.info("x4")
@@ -278,7 +298,13 @@ def test_serialize_shape_direct():
     handler = LokiHandler(url="http://example/loki")
     try:
         record = logging.LogRecord(
-            name="unit.test", level=logging.INFO, pathname=__file__, lineno=1, msg="hello %s", args=("world",), exc_info=None
+            name="unit.test",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="hello %s",
+            args=("world",),
+            exc_info=None,
         )
         data = handler._serialize(record)
         assert "streams" in data and isinstance(data["streams"], list)
