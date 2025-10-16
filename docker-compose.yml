@@ -6,7 +6,7 @@ x-env: &default-env
 
 
 services:
-  # --- Vector DB ---
+  # --- Qdrant (Vector DB) ---
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
@@ -40,7 +40,7 @@ services:
       - ./storage:/app/storage
       - ./logs:/app/logs
 
-  # --- Metrics (Prometheus) ---
+  # --- Prometheus (Metrics) ---
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -52,7 +52,7 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/data:/prometheus
 
-  # --- Logs (Loki) ---
+  # --- Loki ( Logs ingestor and processor) ---
   loki:
     image: grafana/loki:2.9.8
     container_name: loki
@@ -64,16 +64,20 @@ services:
       - ./observability/loki/config.yml:/etc/loki/config.yml:ro
       - ./observability/loki/data:/loki
 
-  # --- Log shipper (Promtail) ---
-  promtail:
-    image: grafana/promtail:2.9.8
-    container_name: promtail
+  # --- Alloy ( General ingestor that can handle not only logs) ---
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
     restart: unless-stopped
     volumes:
-      - ./observability/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
-    command: ["--config.file=/etc/promtail/config.yml"]
+      - ./logs:/development_logs/ # general development logs
+      - ./src/book_club/app/logs:/app_logs/ # app run specific logs
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    ports:
+      - "12345:12345"  # Alloy UI
 
   # --- Grafana (Dashboards) ---
   grafana:
@@ -86,7 +90,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Local defaults; consider setting secrets via .env for non-local
+      # Local defaults; I can change them in .env for non-local
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:

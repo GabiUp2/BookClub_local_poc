@@ -26,4 +26,3 @@ markers = [
     "integration: mark test as an integration test",
     "e2e: mark test as an end-to-end test",
 ]
-    
