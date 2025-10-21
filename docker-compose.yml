@@ -15,25 +15,42 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
 
   # --- App backend (stub) ---
-  bookclub-server:
+  bookclub-app:
     build:
       context: ./src/book_club/app
+      dockerfile: Dockerfile
+    container_name: bookclub-app
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+    env_file:
+      - ./src/book_club/app/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+
+  # --- Server backend (stub) ---
+  bookclub-server:
+    build:
+      context: ./src/book_club/server
       dockerfile: Dockerfile
     container_name: bookclub-server
     restart: unless-stopped
     depends_on:
       - qdrant
     env_file:
-      - ./src/book_club/.env
+      - ./src/book_club/server/.env
     environment:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     ports:
-      - "8000:8000"
+      - "8010:8010"
     volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
+      - ./storage:/server/storage
+      - ./logs:/server/logs
 
   # --- Prometheus (Metrics) ---
   prometheus:
