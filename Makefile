@@ -27,16 +27,16 @@ venv: ensure-uv ## Create or update .venv with Python 3.11
 
 deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 	@[ -f requirements.in ] || cat > requirements.in <<-'REQ'
-	httpx>=0.27.0
-	pydantic>=2.8.0
-	rich>=13.7.0
+	httpx==0.27.0
+	pydantic==2.8.0
+	rich==13.7.0
 	REQ
 	@[ -f requirements-dev.in ] || cat > requirements-dev.in <<-'REQ'
-	pytest>=8.2.0
-	pytest-cov>=5.0.0
-	ruff>=0.6.0
-	mypy>=1.11.0
-	pre-commit>=3.7.0
+	pytest==8.2.0
+	pytest-cov==5.0.0
+	ruff==0.6.0
+	mypy==1.11.0
+	pre-commit==3.7.0
 	REQ
 
 lock: ensure-uv deps-seed ## Resolve & lock dependencies

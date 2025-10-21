@@ -31,8 +31,8 @@ curl localhost:8000/healthz
 ```
 
 ## 4) Wire Grafana
-- Add **Prometheus** datasource: `http://<this-host>:9090`
-- Add **Loki** datasource: `http://<this-host>:3100`
+- Add **Prometheus** datasource: `http://localhost:9090`
+- Add **Loki** datasource: `http://localhost:3100`
 - Import dashboard JSON from `observability/dashboards/` (optional)
 
 ## 5) Acceptance checks
@@ -42,15 +42,18 @@ curl localhost:8000/healthz
 
 ## 6) Next steps (MVP tasks)
 - [ ] Implement minimal observability stack (Prometheus + Grafana + Loki + Tempo)
-  - [x] Send dev logs to Loki
+  - [x] Send dev logs to Loki - loks from both app and developemnt environement are there
   - [ ] Send function time execution to metrics to Prometheus
+  - [ ] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files, pytest tags, etc.
   - [ ] Send little traces to Tempo - What's a good small trace to send from the app?
 - [ ] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
+  - `/health`
   - `/ingest`
   - `/generate_flashcards`
   - `/srs`
   - `/anki_export`
+    I want those endpoints to work on separate threads so that the main thread can continue to serve other requests and multiple calls can be served in the same time.
 - [ ] Modularise LLM provider:
   - [ ] Get one local LLM provider that I'll be able to query from app run in docker container - Ollama?
   - [ ] Get one remote LLM provider that I'll be able to query from app run in docker container - Free tier? - OpenAI? Gemini?
