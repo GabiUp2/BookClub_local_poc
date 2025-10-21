@@ -14,24 +14,25 @@ services:
       - QDRANT__SERVICE__GRPC_PORT=6334
       - QDRANT__SERVICE__HTTP_PORT=6333
 
-  # --- App backend (stub) ---
+  # --- App frontend (Next.js + CopilotKit) ---
   bookclub-app:
-    build:
-      context: ./src/book_club/app
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: bookclub-app
     restart: unless-stopped
+    working_dir: src/book_club/app
     depends_on:
-      - qdrant
+      - bookclub-server
     env_file:
       - ./src/book_club/app/.env
     ports:
       - "8000:8000"
     volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
+      - ./src/book_club/app:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev"
 
-  # --- Server backend (stub) ---
+  # --- Server backend (FastAPI) ---
   bookclub-server:
     build:
       context: ./src/book_club/server
