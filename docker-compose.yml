@@ -19,7 +19,7 @@ services:
     image: node:20-alpine
     container_name: bookclub-app
     restart: unless-stopped
-    working_dir: src/book_club/app
+    working_dir: /app
     depends_on:
       - bookclub-server
     env_file:

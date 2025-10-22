@@ -10,9 +10,6 @@ from prometheus_client import multiprocess
 
 logger = logging.getLogger(__name__)
 
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = os.getenv("PORT", "8010")
-
 server = fastapi.FastAPI(title="Book Club Server", version="0.0.1")
 
 # CORS configuration for frontend on port 8000
@@ -31,9 +28,6 @@ server.add_middleware(
 async def startup():
     server.state.started_at = time.time()
     server.state.app_env = os.getenv("APP_ENV", "local")
-    server.state.storage_dir = os.getenv("STORAGE_DIR", "./storage")
-    server.state.qdrant_url = os.getenv("QDRANT_URL", "http://qdrant:6333")
-    server.state.prometheus_scrape = os.getenv("PROMETHEUS_SCRAPE", "true").lower() == "true"
 
 @server.on_event("shutdown")
 async def shutdown():
