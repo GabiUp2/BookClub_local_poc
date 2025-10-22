@@ -27,16 +27,16 @@ venv: ensure-uv ## Create or update .venv with Python 3.11
 
 deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 	@[ -f requirements.in ] || cat > requirements.in <<-'REQ'
-	httpx>=0.27.0
-	pydantic>=2.8.0
-	rich>=13.7.0
+	httpx==0.27.0
+	pydantic==2.8.0
+	rich==13.7.0
 	REQ
 	@[ -f requirements-dev.in ] || cat > requirements-dev.in <<-'REQ'
-	pytest>=8.2.0
-	pytest-cov>=5.0.0
-	ruff>=0.6.0
-	mypy>=1.11.0
-	pre-commit>=3.7.0
+	pytest==8.2.0
+	pytest-cov==5.0.0
+	ruff==0.6.0
+	mypy==1.11.0
+	pre-commit==3.7.0
 	REQ
 
 lock: ensure-uv deps-seed ## Resolve & lock dependencies
@@ -90,7 +90,7 @@ sync-dev: ensure-uv ## Install app + dev deps (from lockfile)
 	@$(UV) sync --all-groups
 
 # -------- Docker Compose v2 (installer) --------
-# You can override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
+# To override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
 COMPOSE_VERSION ?= v2.29.2
 
 compose-install: ## Install Docker Compose v2 (Docker APT repo on Ubuntu or user-space fallback)
@@ -126,3 +126,67 @@ compose-version: ## Show Docker Compose v2 version if installed
 
 compose-switch: ## Optional: install docker-compose-switch to map docker-compose -> docker compose
 	@sudo apt install -y docker-compose-switch || true
+
+# -------- Observability Stack Verification --------
+
+verify-observability: ## Verify complete observability pipeline (Alloy → Loki → Grafana)
+	@echo "🔍 Verifying observability stack..."
+	@echo ""
+	@echo "1  Checking services are running..."
+	@docker compose ps alloy loki grafana prometheus | grep -E "(Up|running)" > /dev/null || (echo "❌ Services not running. Run: docker compose up -d" && exit 1)
+	@echo "✅ All services running"
+	@echo ""
+	@echo "2  Checking health endpoints..."
+	@curl -sf http://localhost:3100/ready > /dev/null || (echo "❌ Loki not ready" && exit 1)
+	@echo "✅ Loki ready"
+	@curl -sf http://localhost:3000/api/health > /dev/null || (echo "❌ Grafana not healthy" && exit 1)
+	@echo "✅ Grafana healthy"
+	@curl -sf http://localhost:12345/ > /dev/null || (echo "❌ Alloy not responding" && exit 1)
+	@echo "✅ Alloy responding"
+	@echo ""
+	@echo "3  Generating test log..."
+	@$(PY) main.py
+	@echo "✅ Test log generated"
+	@echo ""
+	@echo "4  Waiting 3 seconds for ingestion..."
+	@sleep 3
+	@echo ""
+	@echo "5  Querying Loki for logs..."
+	@LOG_COUNT=$$(curl -s -H "X-Scope-OrgID: local" "http://localhost:3100/loki/api/v1/labels" | grep -o "filename" | wc -l); \
+	if [ "$$LOG_COUNT" -eq 0 ]; then \
+		echo "❌ No logs found in Loki"; \
+		exit 1; \
+	fi
+	@echo "✅ Logs present in Loki (labels found)"
+	@echo ""
+	@echo "6 Checking Grafana datasources..."
+	@DATASOURCE_OK=$$(curl -s http://localhost:3000/api/datasources | grep -o "http://loki:3100" | wc -l); \
+	if [ "$$DATASOURCE_OK" -eq 0 ]; then \
+		echo "❌ Loki datasource not configured in Grafana"; \
+		exit 1; 
+	fi
+	@echo "✅ Grafana datasources configured"
+	@echo ""
+	@echo "🎉 Observability stack verification complete!"
+	@echo "   View logs at: http://localhost:3000/explore"
+
+verify-quick: ## Quick check: services up and Loki accessible
+	@docker compose ps alloy loki grafana | grep -E "(Up|running)" > /dev/null && echo "✅ Services running" || echo "❌ Services down"
+	@curl -sf http://localhost:3100/ready > /dev/null && echo "✅ Loki ready" || echo "❌ Loki not ready"
+	@curl -sf http://localhost:3000/api/health > /dev/null && echo "✅ Grafana healthy" || echo "❌ Grafana down"
+
+verify-logs: ## Check if recent logs reached Loki
+	@echo "📊 Checking recent logs in Loki..."
+	@END=$$(date +%s)000000000; \
+	START=$$(($$END - 600000000000)); \
+	RESULT=$$(curl -s -H "X-Scope-OrgID: local" "http://localhost:3100/loki/api/v1/query_range" \
+		--data-urlencode 'query={filename="main.py"}' \
+		--data-urlencode "start=$$START" \
+		--data-urlencode "end=$$END"); \
+	if echo "$$RESULT" | grep -q '"result":\[\]'; then \
+		echo "❌ No logs from main.py found in last 10 minutes"; \
+		exit 1; \
+	else \
+		echo "✅ Logs found in Loki"; \
+		echo "$$RESULT" | grep -o '"stream":{[^}]*}' | head -3; \
+	fi

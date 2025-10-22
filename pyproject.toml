@@ -3,18 +3,27 @@ name = "bookclub-local-poc"
 version = "0.1.0"
 description = "A tool that turns technical PDFs into flashcards and spaced-repetition decks — powered by LLM + retrieval — to help engineers retain and apply what they read."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.11.13"
 dependencies = [
-    "httpx>=0.27.0",
-    "pydantic>=2.8.0",
-    "rich>=13.7.0",
+    "httpx==0.27.0", # for HTTP requests
+    "pydantic==2.8.0", # for data validation
+    "fastapi==0.119.0", # for the web server
+    "rich==13.7.0", # for progress bars!
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.11.0",
-    "pre-commit>=3.7.0",
-    "pytest>=8.2.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.13.3",
+    "mypy==1.11.0", # for type checking
+    "pre-commit==3.7.0", # for code quality
+    "pytest==8.2.0", # for testing
+    "pytest-cov==5.0.0", # for coverage reporting
+    "ruff==0.13.3", # for code quality
+]
+
+[tool.pytest.ini_options]
+addopts = "-n auto"
+markers = [
+    "behaviour: mark test as a behaviour test",
+    "integration: mark test as an integration test",
+    "e2e: mark test as an end-to-end test",
 ]

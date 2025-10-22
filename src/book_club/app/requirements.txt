@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-qdrant-client
-sentence-transformers
-httpx
-pydantic
-prometheus-client

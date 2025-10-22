@@ -12,6 +12,7 @@ build/
 .vscode/
 .windsurf/*
 !.windsurf/rules.md
+.cursor/*
 
 # OS
 .DS_Store
