@@ -8,7 +8,7 @@ scrape_configs:
       - targets: ['bookclub-server:8010']
 
   - job_name: 'bookclub-app'
-    metrics_path: /metrics
+    metrics_path: /api/metrics
     static_configs:
       - targets: ['bookclub-app:8000']
 
