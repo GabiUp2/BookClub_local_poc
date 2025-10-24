@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . ./
 
 EXPOSE ${PORT}
-CMD ["sh", "-lc", "mkdir -p \"${PROMETHEUS_MULTIPROC_DIR}\"; rm -rf \"${PROMETHEUS_MULTIPROC_DIR}\"/* 2>/dev/null || true; exec gunicorn -k uvicorn.workers.UvicornWorker -w ${GUNICORN_WORKERS} -b ${HOST}:${PORT} ${START_POINT}"]
+CMD ["sh", "-lc", "mkdir -p \"${PROMETHEUS_MULTIPROC_DIR}\"; rm -rf \"${PROMETHEUS_MULTIPROC_DIR}\"/* 2>/dev/null || true; exec gunicorn -k uvicorn.workers.UvicornWorker -w ${GUNICORN_WORKERS:-4} -b 0.0.0.0:${PORT:-8010} ${START_POINT:-server_main:server}"]

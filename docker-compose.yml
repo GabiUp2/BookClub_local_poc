@@ -47,6 +47,7 @@ services:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
     ports:
       - "8010:8010"
     volumes:

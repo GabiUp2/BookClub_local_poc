@@ -7,6 +7,7 @@ from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 from prometheus_client import multiprocess
+from prometheus_client import platform_collector
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,14 @@ async def metrics():
     if os.getenv("PROMETHEUS_MULTIPROC_DIR"):
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)
+        # Register platform collector to expose default metrics such as python_info
+        platform_collector.PlatformCollector(registry=registry)
         data = generate_latest(registry)
     else:
-        data = generate_latest()
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        platform_collector.PlatformCollector(registry=registry)
+        data = generate_latest(registry)
     return Response(data, media_type=CONTENT_TYPE_LATEST)
 
 # ----- Endpoints -----
