@@ -86,3 +86,12 @@ curl localhost:8000/healthz
   - Cards generated per session
   - Q&A latency (if implemented)
 
+# Lessons learned:
+## Docker and sudo
+- If you are using sudo to run docker commands, you need rnable passwordless sudo for the user runnig docker commands. Otherwise, tests that rely on connections or are testing conenctions between dockerized containers and other docker related commands will fail with a permission error.
+
+You can add the user to the docker group with the following command: `sudo usermod -aG docker $USER` then restart your terminal or change into docker group with `newgrp docker` - verify with `docker ps`.
+
+To configure passwordless sudo <sic!> < Use with caution! >, add the following line to the sudoers file: `your_username ALL=(ALL) NOPASSWD: ALL` - verify with `sudo -l`. To open sudoers file for docker, use `sudo visudo -f /etc/sudoers.d/docker`.
+
+This is interesting find that there is passwordless sudo. It's like a whitelist for applications to run as root, something like checking "run as administrator" on windows but without the hassle of clicking the button.

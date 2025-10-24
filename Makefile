@@ -190,3 +190,24 @@ verify-logs: ## Check if recent logs reached Loki
 		echo "✅ Logs found in Loki"; \
 		echo "$$RESULT" | grep -o '"stream":{[^}]*}' | head -3; \
 	fi
+
+verify-integration: ## End-to-end: app+server+observability
+	@echo "➡ Bringing up stack..."
+	@docker compose up -d
+	@echo "➡ Waiting for server..."
+	@until curl -sf http://localhost:8010/health >/dev/null; do sleep 1; done
+	@echo "✅ Server healthy"
+	@echo "➡ Waiting for app..."
+	@until curl -sf http://localhost:8000/ >/dev/null; do sleep 1; done
+	@echo "✅ App reachable"
+	@echo "➡ In-cluster: app -> server health"
+	@docker compose exec -T bookclub-app wget -qO- http://bookclub-server:8010/health | grep -q '"status": "ok"' && echo "✅ App can reach server"
+	@echo "➡ Metrics endpoint"
+	@curl -sf http://localhost:8010/metrics | head -n 5 >/dev/null && echo "✅ /metrics served"
+	@echo "➡ Prometheus targets"
+	@curl -sf http://localhost:9090/api/v1/targets | jq -e '.data.activeTargets[] | select(.labels.job=="bookclub-server" and .health=="up")' >/dev/null && echo "✅ Prometheus scraping bookclub-server" || (echo "❌ Prometheus target down"; exit 1)
+	@echo "➡ Loki ready"
+	@curl -sf http://localhost:3100/ready >/dev/null && echo "✅ Loki ready"
+	@echo "➡ Grafana health"
+	@curl -sf http://localhost:3000/api/health >/dev/null && echo "✅ Grafana healthy"
+	@echo "🎉 Integration OK"

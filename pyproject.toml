@@ -13,10 +13,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "requests==2.32.5", # for HTTP requests
     "mypy==1.11.0", # for type checking
     "pre-commit==3.7.0", # for code quality
     "pytest==8.2.0", # for testing
     "pytest-cov==5.0.0", # for coverage reporting
+    "pytest-xdist==3.8.0", # for parallel testing
     "ruff==0.13.3", # for code quality
 ]
 
