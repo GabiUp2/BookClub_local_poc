@@ -45,18 +45,22 @@ curl localhost:8000/healthz
 - [ ] Implement minimal observability stack (Prometheus + Grafana + Loki + Tempo)
   - [x] Send dev logs to Loki - loks from both app and developemnt environement are there
   - [x] Send function times of execution as metrics to Prometheus
-  - [ ] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files, pytest tags, etc. - pushgate?
+  - [x] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files and pytest tags - use pushgate?
   - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
-  - `/health`
+  - `/health` 
   - `/ingest`
   - `/generate_flashcards`
   - `/srs`
   - `/anki_export`
     I want those endpoints to work on separate threads so that the main thread can continue to serve other requests and multiple calls can be served in the same time.
-- [ ] Make GitHub actions run all tests on commit & push and PR's, and tag commits that pass all tests with a label
-- [ ] Make GitHUb actions push this commit/PR metadata [branch from, commit hash, commit message, author, labels] so that I can see them in Grafana as time series
+- [ ] Write initial CI/CD:
+  - [ ] Make all test not related to observability run on commit & push and PR's
+  - [ ] Make all test related to observability run on commit & push and PR's
+  - [ ] Make GH Actions tag the commit with label "passing tests" if all tests pass
+  - [ ] Make CI/CD feedback to localhost
+  - [ ] Make GitHUb actions push this commit/PR metadata [branch from, commit hash, commit message, author, labels] so that I can see them in Grafana as time series
 - [ ] Modularise LLM provider:
   - [ ] Get one local LLM provider that I'll be able to query from app run in docker container - Ollama?
   - [ ] Get one remote LLM provider that I'll be able to query from app run in docker container - Free tier? - OpenAI? Gemini?
@@ -68,19 +72,51 @@ curl localhost:8000/healthz
 - [ ] Create `docs/demo_script.md` (3‑minute flow)
 - [ ] Add optional observability dashboards from section below
 - [ ] Optional: Python observability deep dive
-  - [ ] Optional: Add decorator for timing methods and sending them as metrics through Prometheus into Grafana
+  - [x] Optional: Add decorator for timing methods and sending them as metrics through Prometh  eus into Grafana
   - [ ] Optional: Add a way to add test times as metrics through Prometheus into Grafana
   - [ ] Optional: Add parser for tool for parsing memory profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing CPU profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing GC profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing heap profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing thread profiling output into Grafana as a panel
-- [ ] Optional: Add Mimir as storage for metrics - jsut to see hwo to set it up
+- [ ] Optional: Add Mimir as storage for metrics - just to see how to set it up
 
 ## 7) Troubleshooting
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
 - If Prometheus/Loki already exist elsewhere, **comment out** those services in `docker-compose.yml` and point Grafana at theg
  existing ones.
+
+## 8) Documentation
+
+### Observability Documentation
+
+- **[Execution Timings](docs/execution_timings.md)** - Function performance tracking with `@track_timing` decorator
+  - Automatic metrics for execution time, call counts, and error rates
+  - Supports sync/async functions, Gunicorn multiprocess mode, and trace exemplars
+- **[Execution Timings Verification](docs/execution_timings_verification.md)** - Integration guide and troubleshooting
+  - Step-by-step setup, testing workflows, and Grafana dashboard examples
+
+- **[Test Metrics](docs/test_metrics.md)** - pytest test execution metrics via Pushgateway
+  - Batch collection, cleanup modes (before, after, both, none)
+  - Per-test duration tracking with custom labels and tags
+- **[Test Metrics Verification](docs/test_metrics_verification.md)** - Pipeline verification and CI/CD integration
+  - Make commands for validation, cleanup behavior tests
+
+### Quick Links
+
+```bash
+# Function timing decorator
+@track_timing(namespace="api")
+async def my_endpoint():
+    pass
+
+# Test metrics (in pytest)
+pytest --pushgw=http://localhost:9091 --prom-cleanup=after
+
+# Verify pipelines
+make verify-test-metrics
+make test-cleanup-behavior
+```
 
 ## Optional: `observability/dashboards/` (placeholder)
 - Add exported Grafana dashboard JSON here once you’ve built the first panels:
@@ -117,3 +153,7 @@ Precedense of solving environment variables (from highest to lowest) based on do
 - Dockerfile ENV directives
 
 https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
+
+## Why -the fuck- am i getting the douplicated metrics values?
+
+I think it's because the metrics are being collected by the server and by the gunicorn worker, and I don't know how to fix it.
