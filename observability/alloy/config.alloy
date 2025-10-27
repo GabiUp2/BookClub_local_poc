@@ -29,6 +29,12 @@ local.file_match "app_logs" {
   sync_period = "1s"
 }
 
+// Targeting server logs as a target
+local.file_match "server_logs" {
+  path_targets = [{"__path__" = "/server_logs/*.log"}]
+  sync_period = "1s"
+}
+
 // Forwarding development logs to Loki
 loki.source.file "development_logs" {
   targets = local.file_match.development_logs.targets
@@ -38,6 +44,12 @@ loki.source.file "development_logs" {
 // Forwarding app logs to Loki
 loki.source.file "app_logs" {
   targets = local.file_match.app_logs.targets
+  forward_to = [loki.process.add_new_label.receiver]
+}
+
+// Forwarding server logs to Loki
+loki.source.file "server_logs" {
+  targets = local.file_match.server_logs.targets
   forward_to = [loki.process.add_new_label.receiver]
 }
 
