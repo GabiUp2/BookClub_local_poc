@@ -17,9 +17,15 @@ loki.source.file "docker_logs" {
   forward_to = [loki.write.local.receiver]
 }
 
-// Targeting developemnt files as a target
+// Targeting pytest failure logs (JSON format) from logs/pytest_failures.log
+local.file_match "pytest_logs" {
+  path_targets = [{"__path__" = "/development_logs/pytest_failures.log"}]
+  sync_period = "1s"
+}
+
+// Targeting main development log (structured format) from logs/main.log
 local.file_match "development_logs" {
-  path_targets = [{"__path__" = "/development_logs/*.log"}]
+  path_targets = [{"__path__" = "/development_logs/main.log"}]
   sync_period = "1s"
 }
 
@@ -35,10 +41,16 @@ local.file_match "server_logs" {
   sync_period = "1s"
 }
 
-// Forwarding development logs to Loki
+// Forwarding pytest JSON failure logs to Loki
+loki.source.file "pytest_logs" {
+  targets = local.file_match.pytest_logs.targets
+  forward_to = [loki.process.pytest_json.receiver]
+}
+
+// Forwarding other development logs to Loki
 loki.source.file "development_logs" {
   targets = local.file_match.development_logs.targets
-  forward_to = [loki.process.add_new_label.receiver]
+  forward_to = [loki.process.structured_logs.receiver]
 }
 
 // Forwarding app logs to Loki
@@ -53,7 +65,51 @@ loki.source.file "server_logs" {
   forward_to = [loki.process.add_new_label.receiver]
 }
 
-// Formatting Loki mapping
+// Process pytest JSON failures
+loki.process "pytest_json" {
+  stage.json {
+    expressions = {
+      extracted_level  = "level",
+      extracted_event  = "event",
+      extracted_source = "source",
+      test_name        = "test_name",
+      test_file        = "file",
+      outcome          = "outcome",
+      short_error      = "short_error",
+    }
+  }
+  
+  stage.labels {
+    values = {
+      level  = "extracted_level",
+      event  = "extracted_event",
+      source = "extracted_source",
+      outcome = "outcome",
+    }
+  }
+  
+  forward_to = [loki.write.local.receiver]
+}
+
+// Process structured logs
+loki.process "structured_logs" {
+  stage.regex {
+    expression = "^(?P<timestamp>[^ ]+ [^ ]+) - (?P<logger>[^ ]+) - (?P<level>[^ ]+) - (?P<filename>[^ ]+) - (?P<lineno>\\d+) - (?P<funcName>[^ ]+) - (?P<process>\\d+) - (?P<thread>\\d+) - (?P<threadName>[^ ]+) - (?P<message>.*)$"
+  }
+  
+  stage.labels {
+    values = {
+      level    = "level",
+      logger   = "logger",
+      filename = "filename",
+      funcName = "funcName",
+    }
+  }
+  
+  forward_to = [loki.write.local.receiver]
+}
+
+// Formatting Loki mapping for app/server logs
 loki.process "add_new_label" {
   // Log debug info to see what's being processed
   stage.output {

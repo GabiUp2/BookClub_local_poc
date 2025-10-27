@@ -17,7 +17,7 @@ log_level = os.getenv("LOGS_LEVEL", "INFO")
 log_format = os.getenv("LOGS_FORMAT")
 log_dir = os.getenv("LOG_DIR", "/logs")
 
-os.makedirs(log_dir, exist_ok=True)
+os.makedirs(log_dir, exist_ok=True) #TODO: This make dir if does not exists should be in Docker file.
 
 logger = logging.getLogger(__name__)
 logger.setLevel(log_level)

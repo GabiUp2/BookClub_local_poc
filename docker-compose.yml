@@ -71,6 +71,15 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/data:/prometheus
 
+  # --- Pushgateway (Metrics pusher) ---
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+    command: ["--web.enable-admin-api"]
+
   # --- Loki ( Logs ingestor and processor) ---
   loki:
     image: grafana/loki:2.9.8

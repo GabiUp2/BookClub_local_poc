@@ -25,10 +25,11 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-n auto"
+addopts = "-q -n auto --dist loadfile"
 markers = [
-    "long": mark test as a long running test, those test by the default should be run on ci/cd and are just inconveninet to run on local but still important",
+    "long: mark test as a long running test, those test by the default should be run on ci/cd and are just inconveninet to run on local but still important",
     "behaviour: mark test as a behaviour test",
     "integration: mark test as an integration test",
     "e2e: mark test as an end-to-end test",
+    "serial: mark test to run serially within same file (enforced by --dist loadfile)",
 ]
