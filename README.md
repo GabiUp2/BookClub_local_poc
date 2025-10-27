@@ -24,6 +24,7 @@ cp .env.example .env
 docker compose up -d qdrant loki promtail prometheus
 ```
 
+
 ## 3) Build & run the backend stub
 ```bash
 docker compose up -d --build app
@@ -43,10 +44,10 @@ curl localhost:8000/healthz
 ## 6) Next steps (MVP tasks)
 - [ ] Implement minimal observability stack (Prometheus + Grafana + Loki + Tempo)
   - [x] Send dev logs to Loki - loks from both app and developemnt environement are there
-  - [ ] Send function time execution to metrics to Prometheus
-  - [ ] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files, pytest tags, etc.
-  - [ ] Send little traces to Tempo - What's a good small trace to send from the app?
-- [ ] Implement basic REST Server, using FastAPI with the following enpoints:
+  - [x] Send function times of execution as metrics to Prometheus
+  - [ ] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files, pytest tags, etc. - pushgate?
+  - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
+- [x] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
   - `/health`
   - `/ingest`
@@ -54,6 +55,8 @@ curl localhost:8000/healthz
   - `/srs`
   - `/anki_export`
     I want those endpoints to work on separate threads so that the main thread can continue to serve other requests and multiple calls can be served in the same time.
+- [ ] Make GitHub actions run all tests on commit & push and PR's, and tag commits that pass all tests with a label
+- [ ] Make GitHUb actions push this commit/PR metadata [branch from, commit hash, commit message, author, labels] so that I can see them in Grafana as time series
 - [ ] Modularise LLM provider:
   - [ ] Get one local LLM provider that I'll be able to query from app run in docker container - Ollama?
   - [ ] Get one remote LLM provider that I'll be able to query from app run in docker container - Free tier? - OpenAI? Gemini?
@@ -72,7 +75,7 @@ curl localhost:8000/healthz
   - [ ] Optional: Add parser for tool for parsing GC profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing heap profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing thread profiling output into Grafana as a panel
-- [ ] Optional: Add Mimir as storage for metrics
+- [ ] Optional: Add Mimir as storage for metrics - jsut to see hwo to set it up
 
 ## 7) Troubleshooting
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
@@ -87,7 +90,7 @@ curl localhost:8000/healthz
   - Q&A latency (if implemented)
 
 # Lessons learned:
-## Docker and sudo
+## Docker and sudo:
 - If you are using sudo to run docker commands, you need rnable passwordless sudo for the user runnig docker commands. Otherwise, tests that rely on connections or are testing conenctions between dockerized containers and other docker related commands will fail with a permission error.
 
 You can add the user to the docker group with the following command: `sudo usermod -aG docker $USER` then restart your terminal or change into docker group with `newgrp docker` - verify with `docker ps`.
@@ -95,3 +98,22 @@ You can add the user to the docker group with the following command: `sudo userm
 To configure passwordless sudo <sic!> < Use with caution! >, add the following line to the sudoers file: `your_username ALL=(ALL) NOPASSWD: ALL` - verify with `sudo -l`. To open sudoers file for docker, use `sudo visudo -f /etc/sudoers.d/docker`.
 
 This is interesting find that there is passwordless sudo. It's like a whitelist for applications to run as root, something like checking "run as administrator" on windows but without the hassle of clicking the button.
+
+## Testing Loki:
+When testing logs processing. Make sure that your app generates at least some logs xD.
+
+## Prcedence of env vars:
+First of all command `docker compose config` shows solved configuration file with all defaults elements and fed environment variables.
+
+If Docker Compose attributes are written to first search for a variable in the environment, then the top `.env` file values will have precedence. e.g "`TOP_ENV_FILE:  ${TOP_ENV_FILE:-DOCKER_COMPOSE_DIRECT}`".
+
+Also docker compose can feed singular environment variables via `environment` attribute to the container or target .env file that is mounted to the container e.g "`env_file: - ./src/book_club/server/.env`".
+
+Precedense of solving environment variables (from highest to lowest) based on docker compose docs:
+- environment: section in docker-compose.yml
+- Shell environment variables (exported in the host)
+- .env file in the project root
+- env_file: attribute
+- Dockerfile ENV directives
+
+https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/

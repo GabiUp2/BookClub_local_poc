@@ -9,6 +9,7 @@ dependencies = [
     "pydantic==2.8.0", # for data validation
     "fastapi==0.119.0", # for the web server
     "rich==13.7.0", # for progress bars!
+    "prometheus-client==0.21.0", # for metrics
 ]
 
 [dependency-groups]
@@ -17,6 +18,7 @@ dev = [
     "mypy==1.11.0", # for type checking
     "pre-commit==3.7.0", # for code quality
     "pytest==8.2.0", # for testing
+    "pytest-asyncio==0.23.8", # for async testing
     "pytest-cov==5.0.0", # for coverage reporting
     "pytest-xdist==3.8.0", # for parallel testing
     "ruff==0.13.3", # for code quality
@@ -25,6 +27,7 @@ dev = [
 [tool.pytest.ini_options]
 addopts = "-n auto"
 markers = [
+    "long": mark test as a long running test, those test by the default should be run on ci/cd and are just inconveninet to run on local but still important",
     "behaviour: mark test as a behaviour test",
     "integration: mark test as an integration test",
     "e2e: mark test as an end-to-end test",

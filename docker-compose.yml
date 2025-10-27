@@ -24,6 +24,9 @@ services:
       - bookclub-server
     env_file:
       - ./src/book_club/app/.env
+    environment:
+      LOGS_FORMAT: ${LOGS_FORMAT}
+      LOGS_LEVEL: ${LOGS_LEVEL}
     ports:
       - "8000:8000"
     volumes:
@@ -35,8 +38,8 @@ services:
   # --- Server backend (FastAPI) ---
   bookclub-server:
     build:
-      context: ./src/book_club/server
-      dockerfile: Dockerfile
+      context: ./src/book_club/
+      dockerfile: server/Dockerfile
     container_name: bookclub-server
     restart: unless-stopped
     depends_on:
@@ -47,12 +50,14 @@ services:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
-      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
+      PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
+      LOGS_FORMAT: ${LOGS_FORMAT:-%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s}
+      LOGS_LEVEL: ${LOGS_LEVEL:-INFO}
     ports:
       - "8010:8010"
     volumes:
       - ./storage:/server/storage
-      - ./logs:/server/logs
+      - ./src/book_club/server/logs:/logs
 
   # --- Prometheus (Metrics) ---
   prometheus:
@@ -89,6 +94,7 @@ services:
       - /var/log:/var/log:ro
       - ./logs:/development_logs/ # general development logs
       - ./src/book_club/app/logs:/app_logs/ # app run specific logs
+      - ./src/book_club/server/logs:/server_logs/ # server run specific logs
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     ports:
       - "12345:12345"  # Alloy UI
