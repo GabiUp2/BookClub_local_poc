@@ -87,13 +87,16 @@ With parallel execution (`-n auto`), each worker:
 
 ### Labels
 
-- `test_name`: Full test node ID (e.g., `tests/observability/test_monitoring.py::test_loki_has_logs`)
-- `file`: Test file path (truncated to 200 chars)
+- `test_name`: Full test node ID (sanitised; truncated to 250 chars)
+- `file`: Test file path (sanitised; truncated to 200 chars)
 - `type`: Test type from `@pytest.mark.test_type("unit")` marker (default: `unspecified`)
 - `expected_duration`: From `@pytest.mark.expected_duration("short")` marker (default: `unspecified`)
-- `tags`: Extra tags from CLI/env (truncated to 120 chars)
+- `tags`: Extra tags from CLI/env (sanitised; truncated to 120 chars)
+- `outcome`: "passed" or "failed"
+
+Added by prometheus
 - `instance`: Instance identifier (includes worker ID for parallel runs)
-- `job`: Job label for grouping
+- `job`: Prometheus scarping job name as a label for grouping by source
 
 ### Example Markers
 

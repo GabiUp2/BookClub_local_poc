@@ -155,5 +155,9 @@ Precedense of solving environment variables (from highest to lowest) based on do
 https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
 
 ## Why -the fuck- am i getting the douplicated metrics values?
-
 I think it's because the metrics are being collected by the server and by the gunicorn worker, and I don't know how to fix it.
+
+## Reset password in Grafana:
+To reset a password for Grafana admin - once youve set one yourself - you need to get into grafana's docker shell via 'docker exec -it grafana sh' and use the following command `grafana-cli admin reset-admin-password '<new-password>'`
+
+You can initialise the grafana with a set up password by providing a env variable of `GF_SECURITY_ADMIN_PASSWORD` but this will not change the set passwords.
