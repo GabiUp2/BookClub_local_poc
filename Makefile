@@ -244,7 +244,7 @@ verify-observability: ## Verify complete observability pipeline (Alloy → Loki 
 	@echo "✅ All services running"
 	@echo ""
 	@echo "2  Checking health endpoints..."
-	@curl -sf http://localhost:3100/ready > /dev/null || (echo "❌ Loki not ready" && exit 1)
+	@curl -sf -H "X-Scope-OrgID: local" http://localhost:3100/ready > /dev/null || (echo "❌ Loki not ready" && exit 1)
 	@echo "✅ Loki ready"
 	@curl -sf http://localhost:3000/api/health > /dev/null || (echo "❌ Grafana not healthy" && exit 1)
 	@echo "✅ Grafana healthy"
@@ -279,7 +279,7 @@ verify-observability: ## Verify complete observability pipeline (Alloy → Loki 
 
 verify-quick: ## Quick check: services up and Loki accessible
 	@docker compose ps alloy loki grafana | grep -E "(Up|running)" > /dev/null && echo "✅ Services running" || echo "❌ Services down"
-	@curl -sf http://localhost:3100/ready > /dev/null && echo "✅ Loki ready" || echo "❌ Loki not ready"
+	@curl -sf -H "X-Scope-OrgID: local" http://localhost:3100/ready > /dev/null && echo "✅ Loki ready" || echo "❌ Loki not ready"
 	@curl -sf http://localhost:3000/api/health > /dev/null && echo "✅ Grafana healthy" || echo "❌ Grafana down"
 
 verify-logs: ## Check if recent logs reached Loki
@@ -314,7 +314,7 @@ verify-integration: ## End-to-end: app+server+observability
 	@echo "➡ Prometheus targets"
 	@curl -sf http://localhost:9090/api/v1/targets | jq -e '.data.activeTargets[] | select(.labels.job=="bookclub-server" and .health=="up")' >/dev/null && echo "✅ Prometheus scraping bookclub-server" || (echo "❌ Prometheus target down"; exit 1)
 	@echo "➡ Loki ready"
-	@curl -sf http://localhost:3100/ready >/dev/null && echo "✅ Loki ready"
+	@curl -sf -H "X-Scope-OrgID: local" http://localhost:3100/ready >/dev/null && echo "✅ Loki ready"
 	@echo "➡ Grafana health"
 	@curl -sf http://localhost:3000/api/health >/dev/null && echo "✅ Grafana healthy"
 	@echo "🎉 Integration OK"
