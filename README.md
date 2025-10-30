@@ -42,11 +42,14 @@ curl localhost:8000/healthz
 - Qdrant UI/API reachable at `http://localhost:6333`
 
 ## 6) Next steps (MVP tasks)
+### Phase 1: Observability
 - [ ] Implement minimal observability stack (Prometheus + Grafana + Loki + Tempo)
   - [x] Send dev logs to Loki - loks from both app and developemnt environement are there
   - [x] Send function times of execution as metrics to Prometheus
   - [x] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files and pytest tags - use pushgate?
   - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
+
+### Phase 2: Backend
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
   - `/health` 
@@ -55,12 +58,17 @@ curl localhost:8000/healthz
   - `/srs`
   - `/anki_export`
     I want those endpoints to work on separate threads so that the main thread can continue to serve other requests and multiple calls can be served in the same time.
+- [ ] Implement asynchronisity to the calls of endpoints, test measure and verify
+
+### Phase 3: CI/CD
 - [ ] Write initial CI/CD:
   - [ ] Make all test not related to observability run on commit & push and PR's
   - [ ] Make all test related to observability run on commit & push and PR's
   - [ ] Make GH Actions tag the commit with label "passing tests" if all tests pass
   - [ ] Make CI/CD feedback to localhost
   - [ ] Make GitHUb actions push this commit/PR metadata [branch from, commit hash, commit message, author, labels] so that I can see them in Grafana as time series
+
+### Phase 4: LLMs
 - [ ] Modularise LLM provider:
   - [ ] Get one local LLM provider that I'll be able to query from app run in docker container - Ollama?
   - [ ] Get one remote LLM provider that I'll be able to query from app run in docker container - Free tier? - OpenAI? Gemini?
@@ -70,16 +78,17 @@ curl localhost:8000/healthz
 - [ ] Implement `anki_export` (CSV first) - called by the API endpoint
 - [ ] Add `/metrics` counters for ingestion time, chunks, cards_generated and quickly visible devided by sessions and books
 - [ ] Create `docs/demo_script.md` (3‑minute flow)
+
+### Phase 5: Observability 2
 - [ ] Add optional observability dashboards from section below
 - [ ] Optional: Python observability deep dive
-  - [x] Optional: Add decorator for timing methods and sending them as metrics through Prometh  eus into Grafana
-  - [ ] Optional: Add a way to add test times as metrics through Prometheus into Grafana
   - [ ] Optional: Add parser for tool for parsing memory profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing CPU profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing GC profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing heap profiling output into Grafana as a panel
   - [ ] Optional: Add parser for tool for parsing thread profiling output into Grafana as a panel
-- [ ] Optional: Add Mimir as storage for metrics - just to see how to set it up
+- [ ] Add Mimir as storage for metrics - just to see how to set it up
+- [ ] Add Proxy to pushgateway with auto delete upon completing filled metrics call
 
 ## 7) Troubleshooting
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
