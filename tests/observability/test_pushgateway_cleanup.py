@@ -80,7 +80,7 @@ def _run_pytest_with_cleanup(cleanup_mode: str, test_path: str = "tests/observab
     ]
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
-
+@pytest.mark.expected_duration("long")
 def test_cleanup_none_accumulates_metrics():
     """Verify cleanup=none causes metrics to persist across runs."""
     # Clean slate
@@ -109,7 +109,7 @@ def test_cleanup_none_accumulates_metrics():
     # Clean up
     _delete_all_metrics_for_job(TEST_JOB)
 
-
+@pytest.mark.expected_duration("long")
 def test_cleanup_before_prevents_accumulation():
     """Verify cleanup=before removes old metrics before each run."""
     # Pre-populate with a metric
@@ -139,7 +139,7 @@ def test_cleanup_before_prevents_accumulation():
     # Clean up
     _delete_all_metrics_for_job(TEST_JOB)
 
-
+@pytest.mark.expected_duration("long")
 def test_cleanup_after_removes_metrics():
     """Verify cleanup=after removes metrics immediately after push."""
     # Clean slate
@@ -158,7 +158,7 @@ def test_cleanup_after_removes_metrics():
     # Metrics should be deleted immediately after push
     assert count_after == 0, f"Expected 0 metrics after cleanup=after, got {count_after}"
 
-
+@pytest.mark.expected_duration("long")
 def test_cleanup_both_removes_before_and_after():
     """Verify cleanup=both removes metrics both before and after the run."""
     # Pre-populate
