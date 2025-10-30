@@ -48,6 +48,7 @@ curl localhost:8000/healthz
   - [x] Send function times of execution as metrics to Prometheus
   - [x] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files and pytest tags - use pushgate?
   - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
+  - [ ] Add git commit and branch to metrics.
 
 ### Phase 2: Backend
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
