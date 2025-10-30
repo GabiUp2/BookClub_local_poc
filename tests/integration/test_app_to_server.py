@@ -1,7 +1,7 @@
 import subprocess, json, pytest
 pytestmark = pytest.mark.integration
 
-
+@pytest.mark.expected_duration("long")
 def test_app_can_reach_server(docker_prefix):
     cmd = docker_prefix + [
         "docker",

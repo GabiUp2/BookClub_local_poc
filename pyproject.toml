@@ -32,4 +32,6 @@ markers = [
     "integration: mark test as an integration test",
     "e2e: mark test as an end-to-end test",
     "serial: mark test to run serially within same file (enforced by --dist loadfile)",
+    "test_type(name): categorise tests by type (unit, integration, e2e)",
+    "expected_duration(name): expected runtime bucket (short, medium, long)",
 ]
