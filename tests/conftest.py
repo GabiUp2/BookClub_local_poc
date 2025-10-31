@@ -32,12 +32,11 @@ _loki_logger = None
 _git_info = None
 
 def _get_git_info():
-    global _git_info
-    if _git_info is None:
-        try:
-            _git_info = git_commit_and_branch()
-        except Exception:
-            _git_info = {"commit": "unknown", "short": "unknown", "ref": "unknown"}
+    try:
+        _git_info = git_commit_and_branch()
+    except Exception:
+        _git_info = {"commit": "unknown", "short": "unknown", "ref": "unknown"}
+        
     return _git_info
 
 def _get_loki_logger():
