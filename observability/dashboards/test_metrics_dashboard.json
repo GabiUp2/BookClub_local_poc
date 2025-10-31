@@ -4,13 +4,22 @@
       {
         "builtIn": 1,
         "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
         },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "expr": "",
+          "interval": "",
+          "limit": 100,
+          "matchAny": false,
+          "refId": "Anno",
+          "tags": [],
+          "type": "dashboard"
+        },
         "type": "dashboard"
       }
     ]
@@ -18,14 +27,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": null,
+  "id": 1,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -33,19 +41,22 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -53,6 +64,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -68,7 +80,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -89,16 +101,21 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -106,7 +123,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "test_duration_seconds{job=~\"pytest.*\"}",
+          "expr": "test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"})",
           "legendFormat": "{{test_name}}",
           "range": true,
           "refId": "A"
@@ -118,7 +135,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -131,7 +148,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "yellow",
@@ -155,16 +172,21 @@
       },
       "id": 2,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "values": false,
-          "calcs": ["lastNotNull"],
-          "fields": ""
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -172,7 +194,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max(test_duration_seconds{job=~\"pytest.*\"})",
+          "expr": "max(test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "Slowest Test",
           "range": true,
           "refId": "A"
@@ -184,7 +206,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -197,7 +219,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -217,14 +239,19 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "values": false,
-          "calcs": ["lastNotNull"],
-          "fields": ""
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -232,7 +259,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(test_duration_seconds{job=~\"pytest.*\"})",
+          "expr": "count(test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "Total Tests",
           "range": true,
           "refId": "A"
@@ -244,7 +271,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -252,19 +279,22 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "bars",
             "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -272,6 +302,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -287,7 +318,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -304,16 +335,20 @@
       "id": 4,
       "options": {
         "legend": {
-          "calcs": ["mean"],
+          "calcs": [
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "desc"
         }
       },
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -321,7 +356,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(test_duration_seconds{job=~\"pytest.*\"}) by (file)",
+          "expr": "sum by (file) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{file}}",
           "range": true,
           "refId": "A"
@@ -333,7 +368,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -342,9 +377,9 @@
           },
           "custom": {
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             }
           },
           "mappings": [],
@@ -364,19 +399,26 @@
           "displayMode": "table",
           "placement": "right",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "pie",
         "reduceOptions": {
-          "values": false,
-          "calcs": ["lastNotNull"],
-          "fields": ""
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
+        "sort": "desc",
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -384,19 +426,20 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "topk(10, test_duration_seconds{job=~\"pytest.*\"})",
+          "exemplar": false,
+          "expr": "topk(10, (max by (test_name) (last_over_time(test_duration_seconds{job=~\"$job\"}[24h]))) * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{test_name}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Top 10 Slowest Tests",
+      "title": "Top 10 Slowest Tests in last 24 hours",
       "type": "piechart"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -404,19 +447,22 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -424,6 +470,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -439,7 +486,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -456,16 +503,20 @@
       "id": 6,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -473,7 +524,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(test_duration_seconds{job=~\"pytest.*\"}) by (type)",
+          "expr": "count by (type) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{type}}",
           "range": true,
           "refId": "A"
@@ -485,7 +536,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -493,19 +544,22 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "legend": false,
               "tooltip": false,
-              "viz": false,
-              "legend": false
+              "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -513,6 +567,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -528,7 +583,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -545,16 +600,20 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -562,7 +621,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "count(test_duration_seconds{job=~\"pytest.*\"}) by (instance)",
+          "expr": "count by (instance) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A"
@@ -574,7 +633,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -586,6 +645,9 @@
             "cellOptions": {
               "type": "auto"
             },
+            "footer": {
+              "reducers": []
+            },
             "inspect": false
           },
           "mappings": [],
@@ -594,7 +656,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "yellow",
@@ -632,12 +694,6 @@
       "id": 8,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": ["sum"],
-          "show": false
-        },
         "showHeader": true,
         "sortBy": [
           {
@@ -646,7 +702,7 @@
           }
         ]
       },
-      "pluginVersion": "10.0.0",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -655,7 +711,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "test_duration_seconds{job=~\"pytest.*\"}",
+          "expr": "test_duration_seconds{job=~\"$job\"} * on (job, instance, branch) group_left(commit) build_info{job=~\"$job\", branch=~\"$branch\", instance=~\"$instance\", commit=~\"$commit\"}",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -670,17 +726,17 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "job": true,
-              "__name__": true
+              "__name__": true,
+              "job": true
             },
             "indexByName": {
-              "test_name": 0,
-              "file": 1,
-              "type": 2,
+              "Value": 6,
               "expected_duration": 3,
-              "tags": 4,
+              "file": 1,
               "instance": 5,
-              "Value": 6
+              "tags": 4,
+              "test_name": 0,
+              "type": 2
             },
             "renameByName": {
               "Value": "Duration",
@@ -697,50 +753,67 @@
       "type": "table"
     }
   ],
+  "preload": false,
   "refresh": "10s",
-  "schemaVersion": 38,
-  "style": "dark",
-  "tags": ["pytest", "testing", "metrics"],
+  "schemaVersion": 42,
+  "tags": [
+    "pytest",
+    "testing",
+    "metrics"
+  ],
   "templating": {
     "list": [
       {
         "current": {
-          "selected": false,
           "text": "pytest",
           "value": "pytest"
         },
-        "hide": 0,
         "includeAll": false,
         "label": "Job",
         "multi": false,
         "name": "job",
         "options": [],
-        "query": "prometheus",
-        "queryValue": "label_values(test_duration_seconds, job)",
+        "query": "pytest",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "definition": "label_values(build_info{job=\"$job\"}, branch)",
+        "includeAll": true,
+        "label": "branch",
+        "multi": true,
+        "name": "branch",
+        "options": [],
+        "query": {
+          "qryType": 4,
+          "query": "label_values(build_info{job=\"$job\"}, branch)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "current": {
-          "selected": true,
           "text": "All",
           "value": "$__all"
         },
-        "hide": 0,
+        "definition": "label_values(build_info{job=\"$job\", branch=~\"$branch\"}, commit)",
         "includeAll": true,
-        "label": "Instance",
+        "label": "commit",
         "multi": true,
-        "name": "instance",
+        "name": "commit",
         "options": [],
-        "query": "prometheus",
-        "queryValue": "label_values(test_duration_seconds{job=~\"$job\"}, instance)",
+        "query": {
+          "qryType": 4,
+          "query": "label_values(build_info{job=\"$job\", branch=~\"$branch\"}, commit)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       }
     ]
@@ -750,9 +823,9 @@
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "",
+  "timezone": "browser",
   "title": "Pytest Test Metrics",
   "uid": "pytest-test-metrics",
-  "version": 1,
-  "weekStart": ""
+  "version": 10,
+  "weekStart": "monday"
 }

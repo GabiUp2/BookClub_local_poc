@@ -50,6 +50,17 @@ curl localhost:8000/healthz
   - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
   - [ ] Add git commit and branch to metrics.
 
+### The definition of Done for phase 1:
+  - The Observability - tests:
+    - [ ] I'm able to see tests execution by each branch/commit of the repo in Grafana
+    - [ ] I'm able to compare the tests between branches/commits of the repo in Grafana
+    - [ ] I'm able to see the change of execution time of test in time for all tests, differentiating between the branches/commits, test types and test files of the repo in Grafana.
+
+  - The Observability - function execution time:
+    - [ ] I'm able to see function execution time for endpoints each branch/commit of the repo in Grafana
+    - [ ] I'm able to compare the function execution time between branches/commits of the repo in Grafana
+    - [ ] I'm able to see the change of function execution time in time for all functions, differentiating between the branches/commits, function types and function files of the repo in Grafana.
+
 ### Phase 2: Backend
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
@@ -61,6 +72,37 @@ curl localhost:8000/healthz
     I want those endpoints to work on separate threads so that the main thread can continue to serve other requests and multiple calls can be served in the same time.
 - [ ] Implement asynchronisity to the calls of endpoints, test, measure and verify.
 
+### The definition of Done for phase 2:
+  - The Backend functionality:
+    - [ ] I'm able to get the metrics from the server and see them in Grafana.
+    - [ ] I'm able to compare the tests between branches/commits of the repo in Grafana
+    - [ ] I'm able to see the change of execution latency, duration and error rate of calls in time for all tests, differentiating between the branches/commits, test types and test files of the repo in Grafana.
+  - The backend observability:
+    - [ ] I'm able to see function execution time for endpoints each branch/commit of the repo in Grafana
+    - [ ] I'm able to compare the function execution time between branches/commits of the repo in Grafana
+    - [ ] I'm able to see the change of function execution time in time for all functions, differentiating between the branches/commits, function types and function files of the repo in Grafana.
+    - I'm measuring following metrics of the server:
+      - [ ] Request rate (RPS):
+        How many HTTP requests server handles per second/minute/hour/24h.
+      - [ ] In flight requests:
+        How many HTTP requests server handles at this time.
+      - [ ] Request latency (end-to-end):
+        How long it takes for the server to handle a request, p50, p95/p99 tail per endpoint.
+      - [ ] Dependency latency:
+        Time spend calling DB, p50, p95/p99 tail per endpoint.
+      - [ ] Request error rate:
+        How many HTTP requests is returned as errors in second/minute/hour/24h.
+      - [ ] 4xx breakdown:
+        Split between 400, 401/403/404/409/422/429/4xx.
+      - [ ] 5xx breakdown:
+        Split between 500, 502/503/504/5xx.
+
+### Phase 2.5: Experimentation:
+- [ ] Make sure that the previous sessions is clearly tagged in and saved, make a backup.
+- [ ] Implement the lessons learned from this video: https://www.youtube.com/watch?v=HTSK6eRwyGM
+- [ ] Make a dashboard with frozen data that shows time execution before and after implementation of the lessons learned above.
+
+
 ### Phase 3: CI/CD
 - [ ] Write initial CI/CD:
   - [ ] Make all test not related to observability run on commit & push and PR's.
@@ -68,6 +110,9 @@ curl localhost:8000/healthz
   - [ ] Make GH Actions tag the commit with label "passing tests" if all tests pass.
   - [ ] Make CI/CD feedback to localhost.
   - [ ] Make GitHUb actions push this commit/PR metadata [branch from, commit hash, commit message, author, labels] so that I can see them in Grafana as time series.
+
+### Definition of Done for phase 3:
+  - The CI/CD runs all the tests pn p
 
 ### Phase 4: LLMs
 - [ ] Modularise LLM provider:
