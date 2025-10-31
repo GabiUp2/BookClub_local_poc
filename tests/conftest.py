@@ -8,7 +8,7 @@ import pytest
 import subprocess
 
 from pathlib import Path
-from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
+from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
 # Add project `src/` to sys.path for tests
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -16,15 +16,29 @@ SRC_PATH = PROJECT_ROOT / "src"
 if SRC_PATH.is_dir() and str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
+from book_club.observability.GitHandler import git_commit_and_branch
+
 _SANITISE = re.compile(r"[^a-zA-Z0-9_.:-]")  # safe for Prom labels
 
 # Session-wide registry and gauges for collecting all test metrics
 _session_registry = None
 _session_gauge = None
 _session_outcome_gauge = None
+_build_info_gauge = None
 
 # Logger for sending test failures to Loki via Alloy
 _loki_logger = None
+
+_git_info = None
+
+def _get_git_info():
+    global _git_info
+    if _git_info is None:
+        try:
+            _git_info = git_commit_and_branch()
+        except Exception:
+            _git_info = {"commit": "unknown", "short": "unknown", "ref": "unknown"}
+    return _git_info
 
 def _get_loki_logger():
     """Lazy-init logger that writes test failures to file for Alloy ingestion."""
@@ -191,6 +205,23 @@ def _collect_test_metric(item, duration: float, outcome):
             labelnames=("test_name", "file", "type", "expected_duration", "tags"),
             registry=_session_registry,
         )
+        # Initialise build_info once per session
+        gi = _get_git_info()
+        repo_name = PROJECT_ROOT.name
+        branch = gi.get("ref", "unknown")
+        commit = gi.get("short") or gi.get("commit", "unknown")
+        global _build_info_gauge
+        _build_info_gauge = Gauge(
+            "build_info",
+            "Repository build information",
+            labelnames=("repo", "branch", "commit"),
+            registry=_session_registry,
+        )
+        _build_info_gauge.labels(
+            _norm(repo_name)[:100],
+            _norm(branch)[:100],
+            _norm(commit)[:100],
+        ).set(1)
 
     # Labels
     nodeid = item.nodeid  # e.g. tests/mod/test_x.py::TestCls::test_foo[param]
@@ -212,20 +243,20 @@ def _collect_test_metric(item, duration: float, outcome):
     # Add this test's metric to the session-wide gauges
     # Be mindful of cardinality—normalise and keep strings compact
     _session_gauge.labels(
-        test_name=_norm(test_name)[:250],
-        file=_norm(file_path)[:200],
+        test_name=_norm(test_name)[:250], # max 250 chars
+        file=_norm(file_path)[:200], # max 200 chars
         type=_norm(test_type),
         expected_duration=_norm(expected_duration),
-        tags=_norm(tags)[:120],
+        tags=_norm(tags)[:120], # max 120 chars
         outcome=outcome_str,
     ).set(duration)
     
     _session_outcome_gauge.labels(
-        test_name=_norm(test_name)[:250],
-        file=_norm(file_path)[:200],
+        test_name=_norm(test_name)[:250], # max 250 chars
+        file=_norm(file_path)[:200], # max 200 chars
         type=_norm(test_type),
         expected_duration=_norm(expected_duration),
-        tags=_norm(tags)[:120],
+        tags=_norm(tags)[:120], # max 120 chars
     ).set(1 if test_passed else 0)
 
 def pytest_sessionfinish(session, exitstatus):
@@ -245,15 +276,18 @@ def pytest_sessionfinish(session, exitstatus):
     worker_id = getattr(cfg, "workerinput", {}).get("workerid", "main")
     instance_with_worker = f"{instance}_{worker_id}" if worker_id != "main" else instance
     
-    # Grouping key controls Pushgateway grouping; keeps series tidy
-    # Note: job is passed as a parameter, not in grouping_key
-    grouping_key = {"instance": _norm(instance_with_worker)}
+    gi = _get_git_info()
+    branch = gi.get("ref", "unknown")
+    grouping_key = {"instance": _norm(instance_with_worker), "branch": _norm(branch)}
     try:
-        pushadd_to_gateway(pushgw, job=_norm(job), registry=_session_registry, grouping_key=grouping_key, timeout=5.0)
+        push_to_gateway(pushgw, job=_norm(job), registry=_session_registry, grouping_key=grouping_key, timeout=5.0)
     except Exception as e:
-        # Don't fail the test run for telemetry errors
-        import warnings
-        warnings.warn(f"Pushgateway push failed: {e}", UserWarning)
+        try:
+            # retry without branch if gateway rejects grouping key
+            push_to_gateway(pushgw, job=_norm(job), registry=_session_registry, grouping_key={"instance": _norm(instance_with_worker)}, timeout=5.0)
+        except Exception as e2:
+            import warnings
+            warnings.warn(f"Pushgateway push failed: {e2}", UserWarning)
     
     # Clean up after push if configured
     if cleanup in ("after", "both"):
@@ -263,6 +297,7 @@ def _cleanup_pushgateway(cfg):
     """Delete all metrics for this job from Pushgateway."""
     import urllib.request
     import urllib.error
+    from urllib.parse import quote
     import json
     
     pushgw = cfg.getoption("--pushgw")
@@ -283,7 +318,7 @@ def _cleanup_pushgateway(cfg):
             url_parts = [f"{pushgw}/metrics/job/{normalized_job}"]
             for key, value in labels.items():
                 if key != "job":  # job is already in the path
-                    url_parts.append(f"/{key}/{value}")
+                    url_parts.append(f"/{key}/{quote(value, safe='')}")
             delete_url = "".join(url_parts)
             
             req = urllib.request.Request(delete_url, method="DELETE")
