@@ -20,3 +20,9 @@ datasources:
     secureJsonData:
       httpHeaderValue1: "local"
     editable: true
+
+  - name: Tempo
+    type: tempo
+    url: http://tempo:3200
+    access: proxy
+    isDefault: false

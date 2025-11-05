@@ -131,3 +131,26 @@ loki.process "add_new_label" {
 
   forward_to = [loki.write.local.receiver]
 }
+
+otelcol.receiver.otlp "default" {
+  grpc { endpoint = "0.0.0.0:4317" }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "http://tempo:4317"
+    tls { insecure = true }
+  }
+}
+
+otelcol.processor.batch "default" {}
+
+otelcol.connector.forward "traces" {
+  input  = [otelcol.receiver.otlp.default.output]
+  output = [otelcol.processor.batch.default.input]
+}
+
+otelcol.connector.forward "to_tempo" {
+  input  = [otelcol.processor.batch.default.output]
+  output = [otelcol.exporter.otlp.tempo.input]
+}

@@ -92,6 +92,18 @@ services:
       - ./observability/loki/config.yml:/etc/loki/config.yml:ro
       - ./observability/loki/data:/loki
 
+  # --- Tempo (Tracing) ---
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    restart: unless-stopped
+    ports:
+      - "4317:4317"   # OTLP gRPC (if exposing directly)
+      - "3200:3200"   # Tempo HTTP API
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yaml:ro
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+
   # --- Alloy ( General ingestor that can handle not only logs) ---
   alloy:
     image: grafana/alloy:latest
