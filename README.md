@@ -43,23 +43,36 @@ curl localhost:8000/healthz
 
 ## 6) Next steps (MVP tasks)
 ### Phase 1: Observability
-- [ ] Implement minimal observability stack (Prometheus + Grafana + Loki + Tempo)
-  - [x] Send dev logs to Loki - loks from both app and developemnt environement are there
-  - [x] Send function times of execution as metrics to Prometheus
-  - [x] Optional: send tests execution time as metrics to Prometheus with granularity per test, with labels of files and pytest tags - use pushgate?
-  - [ ] Send little traces to Tempo - What's a good small trace to send from the app or from server?
-  - [ ] Add git commit and branch to metrics.
+### Phase 1: Observability
+- [x] Send dev logs to Loki — logs from both app and development environment visible
+- [x] Send function execution timings as Prometheus metrics
+- [x] Optional: send test execution time metrics to Prometheus (via Pushgateway)
+- [ ] Add Tempo service and Grafana Tempo datasource
+- [ ] Enable OTEL: instrument FastAPI/app with OpenTelemetry SDK
+  - [ ] Set OTEL resource attrs: `service.name`, `deployment.environment`, `git.commit`, `git.branch`
+  - [ ] Export traces via Alloy OTLP to Tempo
+- [ ] Correlate signals:
+  - [ ] Include `trace_id` in logs (Loki) and enable trace exemplars on latency metrics
+  - [ ] Grafana Explore: pivot metrics ↔ logs ↔ traces for a single request
+- [ ] Add git commit and branch to metrics and logs labels
+- [ ] Add basic alerting:
+  - [ ] p95 latency per endpoint (Prometheus)
+  - [ ] Error rate (Prometheus) and ERROR log spike (Loki)
 
 ### The definition of Done for phase 1:
-  - The Observability - tests:
-    - [ ] I'm able to see tests execution by each branch/commit of the repo in Grafana
-    - [ ] I'm able to compare the tests between branches/commits of the repo in Grafana
-    - [ ] I'm able to see the change of execution time of test in time for all tests, differentiating between the branches/commits, test types and test files of the repo in Grafana.
-
-  - The Observability - function execution time:
-    - [ ] I'm able to see function execution time for endpoints each branch/commit of the repo in Grafana
-    - [ ] I'm able to compare the function execution time between branches/commits of the repo in Grafana
-    - [ ] I'm able to see the change of function execution time in time for all functions, differentiating between the branches/commits, function types and function files of the repo in Grafana.
+- The Observability — tests:
+  - [ ] I can see test execution by branch/commit in Grafana and compare across branches/commits
+  - [ ] I can see the trend of per‑test duration over time, filtered by branch/commit/test file/tags
+- The Observability — function execution time (API):
+  - [ ] I can see endpoint execution time distributions (p50/p95/p99), request rate, in‑flight, error rate
+  - [ ] I can compare these across branches/commits and over time
+- The Observability — traces and correlations:
+  - [ ] Tempo receives traces from the app; I can view spans for a request (including DB/external calls)
+  - [ ] Metrics panels show trace exemplars; logs include `trace_id` and link to traces
+  - [ ] From a metric panel I can pivot to related logs and the corresponding trace
+- The Observability — alerting and operations:
+  - [ ] Alert rules exist for high error rate and high p95 latency, with a working contact point
+  - [ ] Acknowledge/silence flow verified in Grafana Alerting
 
 ### Phase 2: Backend
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
@@ -125,17 +138,24 @@ curl localhost:8000/healthz
 - [ ] Add `/metrics` counters for ingestion time, chunks, cards_generated and quickly visible devided by sessions and books.
 - [ ] Create `docs/demo_script.md` (3‑minute flow).
 
-### Phase 5: Observability 2
-- [ ] Add optional observability dashboards from section below.
-- [ ] Optional: Python observability deep dive.
-  - [ ] Optional: Add parser for tool for parsing memory profiling output into Grafana as a panel.
-  - [ ] Optional: Add parser for tool for parsing CPU profiling output into Grafana as a panel.
-  - [ ] Optional: Add parser for tool for parsing GC profiling output into Grafana as a panel.
-  - [ ] Optional: Add parser for tool for parsing heap profiling output into Grafana as a panel.
-  - [ ] Optional: Add parser for tool for parsing thread profiling output into Grafana as a panel.
-- [ ] Add Mimir as storage for metrics - just to see how to set it up.
-- [ ] Solution Version 1:Add Proxy to pushgateway with auto delete upon completing filled metrics call.
-- [ ] Solution Version 2: Add Expose server endpoints for tests run on it? O_o?
+### Phase 5: Observability with Grafana, Deep Dive
+- [ ] Provisioning as code: datasources, dashboards, alerting (YAML under `observability/grafana/provisioning/`)
+- [ ] Recording rules and performance: Prometheus recording rules; ruler/compactor tuning
+- [ ] Dashboard excellence: variables, transformations, drilldowns, links, UIDs, owners, folders
+- [ ] SLOs and error budgets: burn‑rate alerts, SLI panels, runbooks
+- [ ] Incident response: notification policies, grouping, silences, basic OnCall integration (optional)
+- [ ] Label cardinality and cost controls: metrics/logs label strategy, Loki/Tempo retention
+- [ ] Security & RBAC: folders, teams, roles, secrets handling
+- [ ] Scaling notes (optional): Mimir/Loki/Tempo high‑level architecture and limits
+
+### The definition of Done for phase 5:
+- [ ] Datasources, dashboards, and alerting are provisioned as code; no manual drift
+- [ ] Key dashboards follow standards: owner, UID, folder, variables, links, and on‑panel runbook links
+- [ ] At least one SLO with burn‑rate alerts is live and documented; runbook exists and is linked
+- [ ] Critical alert noise reduced via grouping/routing/silences; test plan demonstrates expected behaviour
+- [ ] Recording rules reduce dashboard query latency on hot paths without losing fidelity
+- [ ] Retention and label cardinality policies documented and applied (Prometheus, Loki, Tempo)
+- [ ] Access controls (folders/teams) applied according to documented policy
 
 ## 7) Troubleshooting
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
