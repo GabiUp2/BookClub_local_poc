@@ -1,6 +1,6 @@
 server:
   http_listen_port: 3200
-  http_grpc_listen_port: 9095
+  grpc_listen_port: 9095
   log_level: info
 
 distributor:
@@ -51,15 +51,7 @@ querier:
   frontend_worker:
     frontend_address: 127.0.0.1:9095
 
-query_frontend:
-  trace_by_id:
-    max_concurrent_requests: 2
-  search:
-    max_concurrent_requests: 1
-    default_result_limit: 20
-
 overrides:
   metrics_generator_processors:
     - service-graphs
     - span-metrics
-

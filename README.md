@@ -41,8 +41,7 @@ curl localhost:8000/healthz
 - Loki shows logs from `bookclub-app` container
 - Qdrant UI/API reachable at `http://localhost:6333`
 
-## 6) Next steps (MVP tasks)
-### Phase 1: Observability
+## 6) Roadmap
 ### Phase 1: Observability
 - [x] Send dev logs to Loki — logs from both app and development environment visible
 - [x] Send function execution timings as Prometheus metrics
@@ -77,7 +76,7 @@ curl localhost:8000/healthz
 ### Phase 2: Backend
 - [x] Implement basic REST Server, using FastAPI with the following enpoints:
   - `/metrics`
-  - `/health` 
+  - `/health`
   - `/ingest`
   - `/generate_flashcards`
   - `/srs`

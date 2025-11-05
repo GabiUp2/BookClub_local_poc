@@ -78,7 +78,7 @@ loki.process "pytest_json" {
       short_error      = "short_error",
     }
   }
-  
+
   stage.labels {
     values = {
       level  = "extracted_level",
@@ -87,7 +87,7 @@ loki.process "pytest_json" {
       outcome = "outcome",
     }
   }
-  
+
   forward_to = [loki.write.local.receiver]
 }
 
@@ -96,7 +96,7 @@ loki.process "structured_logs" {
   stage.regex {
     expression = "^(?P<timestamp>[^ ]+ [^ ]+) - (?P<logger>[^ ]+) - (?P<level>[^ ]+) - (?P<filename>[^ ]+) - (?P<lineno>\\d+) - (?P<funcName>[^ ]+) - (?P<process>\\d+) - (?P<thread>\\d+) - (?P<threadName>[^ ]+) - (?P<message>.*)$"
   }
-  
+
   stage.labels {
     values = {
       level    = "level",
@@ -105,7 +105,7 @@ loki.process "structured_logs" {
       funcName = "funcName",
     }
   }
-  
+
   forward_to = [loki.write.local.receiver]
 }
 
@@ -134,6 +134,10 @@ loki.process "add_new_label" {
 
 otelcol.receiver.otlp "default" {
   grpc { endpoint = "0.0.0.0:4317" }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
 }
 
 otelcol.exporter.otlp "tempo" {
@@ -143,14 +147,8 @@ otelcol.exporter.otlp "tempo" {
   }
 }
 
-otelcol.processor.batch "default" {}
-
-otelcol.connector.forward "traces" {
-  input  = [otelcol.receiver.otlp.default.output]
-  output = [otelcol.processor.batch.default.input]
-}
-
-otelcol.connector.forward "to_tempo" {
-  input  = [otelcol.processor.batch.default.output]
-  output = [otelcol.exporter.otlp.tempo.input]
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
 }
