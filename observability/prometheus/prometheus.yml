@@ -23,7 +23,7 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ['loki:3100']
-  
+
   - job_name: 'prometheus'
     metrics_path: /metrics
     static_configs:
@@ -38,10 +38,13 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ['alloy:12345']
-  
+
   - job_name: 'grafana'
     metrics_path: /metrics
     static_configs:
       - targets: ['grafana:3000']
-    
-    
+
+  - job_name: 'tempo'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['tempo:3200']
