@@ -329,7 +329,7 @@ verify-integration: ## End-to-end: app+server+observability
 	@until curl -sf http://localhost:8000/ >/dev/null; do sleep 1; done
 	@green "App reachable"
 	@blue "In-cluster: app -> server health"
-	@docker compose exec -T bookclub-app wget -qO- http://bookclub-server:8010/health | grep -q '"status": "ok"' && green "App can reach server" || red "App could not reach server"
+	@docker compose exec -T bookclub-app wget -qO- http://bookclub-server:8010/health | grep -q '"status":"ok"' && green "App can reach server" || red "App could not reach server"
 	@blue "Metrics endpoint"
 	@curl -sf http://localhost:8010/metrics | head -n 5 >/dev/null && green "/metrics served" || red "Metrics endpoint not available"
 	@blue "Prometheus targets"
