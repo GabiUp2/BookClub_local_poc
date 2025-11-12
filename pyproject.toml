@@ -10,6 +10,11 @@ dependencies = [
     "fastapi==0.119.0", # for the web server
     "rich==13.7.0", # for progress bars!
     "prometheus-client==0.21.0", # for metrics
+    "opentelemetry-sdk==1.38.0", # for tracing
+    "opentelemetry-exporter-otlp-proto-http==1.38.0", # for exporting traces to tempo
+    "opentelemetry-instrumentation-fastapi==0.59b0", # for tracing FastAPI
+    "opentelemetry-instrumentation-requests==0.59b0", # for tracing HTTP requests
+    "opentelemetry-instrumentation-logging==0.59b0", # for tracing logging
 ]
 
 [dependency-groups]

@@ -236,3 +236,10 @@ I think it's because the metrics are being collected by the server and by the gu
 To reset a password for Grafana admin - once youve set one yourself - you need to get into grafana's docker shell via 'docker exec -it grafana sh' and use the following command `grafana-cli admin reset-admin-password '<new-password>'`
 
 You can initialise the grafana with a set up password by providing a env variable of `GF_SECURITY_ADMIN_PASSWORD` but this will not change the set passwords.
+
+## The dependency graph in UV
+UV as a depndency tree display option for project `uv tree` simillar to `poetry show --tree` or `pipenv graph`. THats nice. Using pip you had to install additional dependency `pipdeptree` which kinda was against the point.
+Also same for the npm it has `npm ls` but be cautious it has the `--depth` parameter to limit the frontend depndencies. Wow, frontend really has a problem.
+For Rust its `cargo tree`.
+For Ubuntu its external, not installed by default, but official package `apt-rdepends`.
+For Arch its 'pactree' and its inastalled by default.

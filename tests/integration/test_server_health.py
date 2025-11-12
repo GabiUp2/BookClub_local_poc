@@ -1,4 +1,7 @@
-import os, time, requests, pytest
+import os
+import time
+import requests
+import pytest
 
 pytestmark = pytest.mark.integration
 

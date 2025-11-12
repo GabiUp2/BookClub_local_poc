@@ -11,12 +11,12 @@ Comprehensive verification and testing of the test metrics pipeline (pytest → 
 Complete end-to-end verification of the test metrics pipeline.
 
 **Steps:**
-1. ✅ Run a single test with metrics push
-2. ✅ Verify metrics appear in Pushgateway
-3. ✅ Check Prometheus is scraping Pushgateway (target status)
-4. ✅ Verify metrics reached Prometheus (may need to wait for scrape interval)
-5. ✅ Test cleanup behavior
-6. ✅ Clean up verification metrics
+1. Run a single test with metrics push
+2. Verify metrics appear in Pushgateway
+3. Check Prometheus is scraping Pushgateway (target status)
+4. Verify metrics reached Prometheus (may need to wait for scrape interval)
+5. Test cleanup behavior
+6. Clean up verification metrics
 
 **Usage:**
 ```bash
@@ -25,28 +25,28 @@ make verify-test-metrics
 
 **Output Example:**
 ```
-🔍 Verifying test metrics pipeline...
+Verifying test metrics pipeline...
 
-1️⃣  Running tests with metrics push...
-✅ Test executed successfully
+1. Running tests with metrics push...
+Test executed successfully
 
-2️⃣  Checking metrics in Pushgateway...
-✅ Found 1 metric(s) in Pushgateway
+2️. Checking metrics in Pushgateway...
+Found 1 metric(s) in Pushgateway
 test_duration_seconds{...} 0.006385104003129527
 
-3️⃣  Checking Prometheus scrape target for Pushgateway...
-✅ Prometheus is scraping Pushgateway (status: up)
+3️. Checking Prometheus scrape target for Pushgateway...
+Prometheus is scraping Pushgateway (status: up)
 
-4️⃣  Verifying metrics reached Prometheus...
-⚠️  Metrics not yet in Prometheus (may need to wait for scrape interval)
+4️. Verifying metrics reached Prometheus...
+Metrics not yet in Prometheus (may need to wait for scrape interval)
 
-5️⃣  Testing cleanup behavior...
+5️. Testing cleanup behavior...
 .                                                                        [100%]
 
-6️⃣  Cleaning up verification metrics...
-✅ Cleanup complete
+6️. Cleaning up verification metrics...
+Cleanup complete
 
-🎉 Test metrics pipeline verification complete!
+Test metrics pipeline verification complete!
    Pushgateway: http://localhost:9091
    Prometheus:  http://localhost:9090
    Grafana:     http://localhost:3000
@@ -71,7 +71,7 @@ make test-cleanup-behavior
 
 **Output Example:**
 ```
-🧪 Testing Pushgateway cleanup behavior...
+Testing Pushgateway cleanup behavior...
    (Running sequentially to avoid race conditions)
 ============================= test session starts ==============================
 ...
@@ -195,15 +195,15 @@ All configuration options are documented in `docs/test_metrics.md`.
 
 ```
 pytest tests/
-    ↓ (measure duration)
+    (measure duration)
 conftest.py::pytest_runtest_call
-    ↓ (collect metrics)
+    (collect metrics)
 _session_registry (batch)
-    ↓ (push at session end)
+    (push at session end)
 Pushgateway
-    ↓ (scrape)
+    (scrape)
 Prometheus
-    ↓ (query)
+    (query)
 Grafana
 ```
 

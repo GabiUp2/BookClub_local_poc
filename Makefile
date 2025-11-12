@@ -55,6 +55,10 @@ help: ## Show this help
 	@grep -E '^(verify-observability|verify-quick|verify-logs|verify-integration):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@blue "OBSERVABILITY UI ACCESS"
+	@grep -E '^(open-observability-firefox|open-observability-chrome):.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 	@blue "MAINTENANCE"
 	@grep -E '^(purge-old-data):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -138,7 +142,6 @@ sync-dev: ensure-uv ## Install app + dev deps (from lockfile)
 
 push-tests: ## Push test metrics to Pushgateway (parallel execution with xdist)
 	@$(UV) run pytest --pushgw=http://localhost:9091 --prom-job=pytest --prom-instance=dev --prom-tags=branch=main,run_id=local --prom-cleanup=none
-
 
 verify-test-metrics: ## Verify complete test metrics pipeline (pytest → Pushgateway → Prometheus)
 	@$(colour_fns)
@@ -340,6 +343,31 @@ verify-integration: ## End-to-end: app+server+observability
 	@curl -sf http://localhost:3000/api/health >/dev/null && green "Grafana healthy" || red "Grafana down"
 	@green "Integration OK"
 
+open-observability-firefox: ## Open observability dashboards in Firefox
+	@powershell.exe -NoLogo -NoProfile -Command '\
+	  $$urls = @("http://localhost:8000/","http://localhost:3000","http://localhost:9090","http://localhost:3100","http://localhost:9091"); \
+	  $$proc = Get-Process firefox -ErrorAction SilentlyContinue | Select-Object -First 1; \
+	  $$firefox = $$null; \
+	  if ($$proc) { $$firefox = $$proc.Path; } \
+	  if (-not $$firefox) { $$firefox = (Get-Command firefox.exe -ErrorAction SilentlyContinue).Source; } \
+	  if (-not $$firefox -and (Test-Path "C:\Program Files\Mozilla Firefox\firefox.exe")) { $$firefox = "C:\Program Files\Mozilla Firefox\firefox.exe"; } \
+	  if (-not $$firefox -and (Test-Path "C:\Program Files (x86)\Mozilla Firefox\firefox.exe")) { $$firefox = "C:\Program Files (x86)\Mozilla Firefox\firefox.exe"; } \
+	  if (-not $$firefox) { Write-Error "Firefox not found via process scan or standard install paths."; exit 1; } \
+	  Start-Process -FilePath $$firefox -ArgumentList ($$urls | ForEach-Object { "-new-tab", $$_ });' >/dev/null 2>&1
+	@printf 'Requested Firefox to open Grafana, Prometheus, Loki, and Pushgateway.\n'
+
+open-observability-chrome: ## Open observability dashboards in Google Chrome
+	@powershell.exe -NoLogo -NoProfile -Command '\
+	  $$urls = @("http://localhost:3000","http://localhost:9090","http://localhost:3100","http://localhost:9091"); \
+	  $$proc = Get-Process chrome -ErrorAction SilentlyContinue | Select-Object -First 1; \
+	  $$chrome = $$null; \
+	  if ($$proc) { $$chrome = $$proc.Path; } \
+	  if (-not $$chrome) { $$chrome = (Get-Command chrome.exe -ErrorAction SilentlyContinue).Source; } \
+	  if (-not $$chrome -and (Test-Path "C:\Program Files\Google\Chrome\Application\chrome.exe")) { $$chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"; } \
+	  if (-not $$chrome -and (Test-Path "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")) { $$chrome = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"; } \
+	  if (-not $$chrome) { Write-Error "Google Chrome not found via process scan or standard install paths."; exit 1; } \
+	  Start-Process -FilePath $$chrome -ArgumentList ($$urls | ForEach-Object { "--new-tab", $$_ });' >/dev/null 2>&1
+	@printf 'Requested Google Chrome to open Grafana, Prometheus, Loki, and Pushgateway.\n'
 
 purge-old-data: ## Clean all observability data (logs, metrics, traces) but keep configs/dashboards
 	@$(colour_fns)
