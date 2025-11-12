@@ -3,8 +3,7 @@ from __future__ import annotations
 import time
 import functools
 import asyncio
-import inspect
-from typing import Callable, Any, Optional, Dict
+from typing import Callable, Dict
 from prometheus_client import REGISTRY as DEFAULT_REGISTRY, Counter, Gauge, Histogram, CONTENT_TYPE_LATEST, generate_latest
 
 #TODO: I want it to use the same registry as the main else i would have to exposed another endpoint, which might be a good idea for metrics that are not related to the app workings but development

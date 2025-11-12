@@ -5,11 +5,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
-from prometheus_client import REGISTRY, CollectorRegistry
+from prometheus_client import CollectorRegistry
 
 pytest_plugins = ('pytest_asyncio',)
 

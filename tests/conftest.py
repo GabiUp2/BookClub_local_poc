@@ -280,7 +280,7 @@ def pytest_sessionfinish(session, exitstatus):
     grouping_key = {"instance": _norm(instance_with_worker), "branch": _norm(branch)}
     try:
         push_to_gateway(pushgw, job=_norm(job), registry=_session_registry, grouping_key=grouping_key, timeout=5.0)
-    except Exception as e:
+    except Exception:
         try:
             # retry without branch if gateway rejects grouping key
             push_to_gateway(pushgw, job=_norm(job), registry=_session_registry, grouping_key={"instance": _norm(instance_with_worker)}, timeout=5.0)

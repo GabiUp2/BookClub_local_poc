@@ -1,4 +1,5 @@
-import subprocess, json, pytest
+import subprocess
+import pytest
 pytestmark = pytest.mark.integration
 
 @pytest.mark.expected_duration("long")
