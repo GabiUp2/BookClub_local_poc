@@ -31,7 +31,7 @@ PROM_CLEANUP=after  # Options: before, after (default), both, none
 - Pushes metrics at end of test session
 - Deletes metrics immediately after push
 - Prevents metric accumulation
-- ⚠️ Prometheus may miss metrics if scrape interval > cleanup time
+- Prometheus may miss metrics if scrape interval > cleanup time
 
 Other modes:
 - `before`: Delete old metrics before new test run (ensures Prometheus gets at least one scrape)
@@ -123,7 +123,7 @@ markers = [
 
 ### Pre-built Dashboard
 
-**📊 Pytest Test Metrics Dashboard**
+**Pytest Test Metrics Dashboard**
 - **Location:** `observability/dashboards/test_metrics_dashboard.json`
 - **Import:** See `observability/dashboards/README.md` for instructions
 
