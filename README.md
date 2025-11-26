@@ -46,7 +46,7 @@ curl localhost:8000/healthz
 - [x] Send dev logs to Loki — logs from both app and development environment visible
 - [x] Send function execution timings as Prometheus metrics
 - [x] Optional: send test execution time metrics to Prometheus (via Pushgateway)
-- [ ] Add Tempo service and Grafana Tempo datasource
+- [x] Add Tempo service and Grafana Tempo datasource
 - [ ] Enable OTEL: instrument FastAPI/app with OpenTelemetry SDK
   - [ ] Set OTEL resource attrs: `service.name`, `deployment.environment`, `git.commit`, `git.branch`
   - [ ] Export traces via Alloy OTLP to Tempo
@@ -230,7 +230,7 @@ Precedense of solving environment variables (from highest to lowest) based on do
 https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/
 
 ## Why -the fuck- am i getting the douplicated metrics values?
-I think it's because the metrics are being collected by the server and by the gunicorn worker, and I don't know how to fix it.
+I think it's because the metrics are being collected by the server and by the gunicorn worker, and I don't know how to fix it, yet.
 
 ## Reset password in Grafana:
 To reset a password for Grafana admin - once youve set one yourself - you need to get into grafana's docker shell via 'docker exec -it grafana sh' and use the following command `grafana-cli admin reset-admin-password '<new-password>'`
