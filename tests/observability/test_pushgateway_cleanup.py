@@ -29,7 +29,7 @@ def _get_metric_count(job: str) -> int:
         with urllib.request.urlopen(api_url, timeout=5.0) as response:
             data = json.loads(response.read().decode())
             groups = [g for g in data.get("data", []) if g.get("labels", {}).get("job") == job]
-            
+
             total_metrics = 0
             for group in groups:
                 if "test_duration_seconds" in group:
@@ -47,7 +47,7 @@ def _delete_all_metrics_for_job(job: str) -> None:
         with urllib.request.urlopen(api_url, timeout=5.0) as response:
             data = json.loads(response.read().decode())
             groups = [g for g in data.get("data", []) if g.get("labels", {}).get("job") == job]
-        
+
         # Delete each metric group by its full grouping key
         for group in groups:
             labels = group.get("labels", {})
@@ -57,7 +57,7 @@ def _delete_all_metrics_for_job(job: str) -> None:
                 if key != "job":  # job is already in the path
                     url_parts.append(f"/{key}/{value}")
             delete_url = "".join(url_parts)
-            
+
             req = urllib.request.Request(delete_url, method="DELETE")
             with urllib.request.urlopen(req, timeout=5.0) as resp:
                 resp.read()
@@ -86,27 +86,27 @@ def test_cleanup_none_accumulates_metrics():
     """Verify cleanup=none causes metrics to persist across runs."""
     # Clean slate
     _delete_all_metrics_for_job(TEST_JOB)
-    
+
     time.sleep(0.5)
     initial_count = _get_metric_count(TEST_JOB)
     assert initial_count == 0, f"Expected 0 metrics initially, got {initial_count}"
-    
+
     # Run test twice with cleanup=none
     result1 = _run_pytest_with_cleanup("none")
     assert result1.returncode == 0, f"First test run failed: {result1.stderr}"
-    
+
     time.sleep(0.5)
     count_after_first = _get_metric_count(TEST_JOB)
     assert count_after_first == 1, f"Expected 1 metric after first run, got {count_after_first}"
-    
+
     result2 = _run_pytest_with_cleanup("none")
     assert result2.returncode == 0, f"Second test run failed: {result2.stderr}"
-    
+
     time.sleep(0.5)
     count_after_second = _get_metric_count(TEST_JOB)
     # With cleanup=none, same test with same grouping key overwrites itself (last write wins)
     assert count_after_second == 1, f"Expected 1 metric after second run, got {count_after_second}"
-    
+
     # Clean up
     _delete_all_metrics_for_job(TEST_JOB)
 
@@ -117,27 +117,27 @@ def test_cleanup_before_prevents_accumulation():
     # Pre-populate with a metric
     _run_pytest_with_cleanup("none")
     time.sleep(0.5)
-    
+
     initial_count = _get_metric_count(TEST_JOB)
     assert initial_count > 0, "Failed to set up initial metrics"
-    
+
     # Run with cleanup=before
     result = _run_pytest_with_cleanup("before")
     assert result.returncode == 0, f"Test run failed: {result.stderr}"
-    
+
     time.sleep(0.5)
     count_after = _get_metric_count(TEST_JOB)
     # Should have only the new run's metrics
     assert count_after == 1, f"Expected 1 metric after cleanup=before, got {count_after}"
-    
+
     # Run again - should still have 1 metric
     result2 = _run_pytest_with_cleanup("before")
     assert result2.returncode == 0, f"Second test run failed: {result2.stderr}"
-    
+
     time.sleep(0.5)
     count_after_second = _get_metric_count(TEST_JOB)
     assert count_after_second == 1, f"Expected 1 metric after second run with cleanup=before, got {count_after_second}"
-    
+
     # Clean up
     _delete_all_metrics_for_job(TEST_JOB)
 
@@ -147,15 +147,15 @@ def test_cleanup_after_removes_metrics():
     """Verify cleanup=after removes metrics immediately after push."""
     # Clean slate
     _delete_all_metrics_for_job(TEST_JOB)
-    
+
     time.sleep(0.5)
     initial_count = _get_metric_count(TEST_JOB)
     assert initial_count == 0, f"Expected 0 metrics initially, got {initial_count}"
-    
+
     # Run with cleanup=after
     result = _run_pytest_with_cleanup("after")
     assert result.returncode == 0, f"Test run failed: {result.stderr}"
-    
+
     time.sleep(0.5)
     count_after = _get_metric_count(TEST_JOB)
     # Metrics should be deleted immediately after push
@@ -168,14 +168,14 @@ def test_cleanup_both_removes_before_and_after():
     # Pre-populate
     _run_pytest_with_cleanup("none")
     time.sleep(0.5)
-    
+
     initial_count = _get_metric_count(TEST_JOB)
     assert initial_count > 0, "Failed to set up initial metrics"
-    
+
     # Run with cleanup=both
     result = _run_pytest_with_cleanup("both")
     assert result.returncode == 0, f"Test run failed: {result.stderr}"
-    
+
     time.sleep(0.5)
     count_after = _get_metric_count(TEST_JOB)
     # Should be 0 because cleanup=both deletes after push

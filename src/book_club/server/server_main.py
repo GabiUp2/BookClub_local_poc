@@ -6,7 +6,7 @@ import logging
 import fastapi
 from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry, REGISTRY
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 from prometheus_client import multiprocess
 from prometheus_client import platform_collector
 
@@ -68,20 +68,20 @@ def _configure_logging() -> None:
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-# Lifespan of a server 
+# Lifespan of a server
 async def lifespan(app: fastapi.FastAPI):
     # startup
     app.state.started_at = time.time()
     app.state.started_at_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     app.state.app_env = os.getenv("APP_ENV", "local")
-    
+
     _clear_multiproc_dir()
     _register_mark_dead() # Behaviour i want is for every worker to mark itself as dead when the server is shutting down.
 
     try:
         yield
 
-    finally:   
+    finally:
         logger.info(f"Server shutdown at {datetime.datetime.now(datetime.timezone.utc).isoformat()}")
 
 server = fastapi.FastAPI(title="Book Club Server", version="0.0.1", lifespan=lifespan)
