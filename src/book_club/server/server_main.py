@@ -23,10 +23,12 @@ ALLOWED_ORIGINS = [
 # ---- Prometheus helpers ----
 PROM_MULTIPROC_DIR = os.getenv("PROMETHEUS_MULTIPROC_DIR")  # e.g., /tmp/prom_multiproc
 
+
 def _build_singleprocess_registry():
     registry = CollectorRegistry()
     platform_collector.PlatformCollector(registry=registry)
     return registry
+
 
 def _build_multiprocess_registry():
     registry = CollectorRegistry()
@@ -34,14 +36,21 @@ def _build_multiprocess_registry():
     platform_collector.PlatformCollector(registry=registry)
     return registry
 
+
 def _prom_registry():
-    return _build_multiprocess_registry() if PROM_MULTIPROC_DIR else _build_singleprocess_registry()
+    return (
+        _build_multiprocess_registry()
+        if PROM_MULTIPROC_DIR
+        else _build_singleprocess_registry()
+    )
+
 
 def _register_mark_dead():
     if PROM_MULTIPROC_DIR:
         pid = os.getpid()
         logger.info(f"Registering mark_process_dead for pid {pid}")
         atexit.register(multiprocess.mark_process_dead, pid)
+
 
 def _clear_multiproc_dir():
     if PROM_MULTIPROC_DIR and os.path.isdir(PROM_MULTIPROC_DIR):
@@ -50,7 +59,10 @@ def _clear_multiproc_dir():
             try:
                 os.remove(os.path.join(PROM_MULTIPROC_DIR, file))
             except OSError as e:
-                logger.error(f"Error clearing multiproc dir {PROM_MULTIPROC_DIR}: {e}. File: {file}")
+                logger.error(
+                    f"Error clearing multiproc dir {PROM_MULTIPROC_DIR}: {e}. File: {file}"
+                )
+
 
 def _configure_logging() -> None:
     log_dir = os.getenv("LOG_DIR", "/logs")
@@ -62,19 +74,20 @@ def _configure_logging() -> None:
         os.makedirs(log_dir, exist_ok=True)
     finally:
         log_level = os.getenv("LOGS_LEVEL", "INFO").upper()
-        log_format = os.getenv("LOGS_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s")
+        log_format = os.getenv(
+            "LOGS_FORMAT",
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s",
+        )
         file_handler = logging.FileHandler(f"{log_dir}/server_main.log")
         formatter = logging.Formatter(log_format)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-<<<<<<< HEAD
-# Lifespan of a server
-=======
+
 def _init_otel(app_name: str = "bookclub-server", app_version: str = "0.0.1"):
     pass
 
->>>>>>> 76d3c2feeffab2c155e350b6327b15e59b37ecd9
+
 async def lifespan(app: fastapi.FastAPI):
     # startup
     app.state.started_at = time.time()
@@ -82,20 +95,23 @@ async def lifespan(app: fastapi.FastAPI):
     app.state.app_env = os.getenv("APP_ENV", "local")
 
     _clear_multiproc_dir()
-    _register_mark_dead() # Behaviour i want is for every worker to mark itself as dead when the server is shutting down.
+    _register_mark_dead()  # Behaviour i want is for every worker to mark itself as dead when the server is shutting down.
 
     try:
         yield
 
     finally:
-        logger.info(f"Server shutdown at {datetime.datetime.now(datetime.timezone.utc).isoformat()}")
+        logger.info(
+            f"Server shutdown at {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
+        )
+
 
 server = fastapi.FastAPI(title="Book Club Server", version="0.0.1", lifespan=lifespan)
 
 server.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:8000", # it's the page that allows only requests from localhost:8000 and bookclub-app:8000 to avoid CORS issues.
+        "http://localhost:8000",  # it's the page that allows only requests from localhost:8000 and bookclub-app:8000 to avoid CORS issues.
         "http://bookclub-app:8000",
     ],
     allow_credentials=True,
@@ -104,6 +120,7 @@ server.add_middleware(
 )
 
 # ----- Metadata -----
+
 
 @server.get("/health", tags=["health"])
 async def health() -> dict:
@@ -118,6 +135,7 @@ async def health() -> dict:
         "multiprocess": bool(PROM_MULTIPROC_DIR),
     }
 
+
 @server.get("/metrics", tags=["metrics"])
 async def metrics():
     reg = _prom_registry()
@@ -130,19 +148,24 @@ async def metrics():
         },
     )
 
+
 # ----- Endpoints -----
+
 
 @server.get("/ingest", tags=["ingest"])
 async def ingest() -> dict:
     return {"status": "not_implemented"}
 
+
 @server.get("/generate_flashcards", tags=["generate_flashcards"])
 async def generate_flashcards() -> dict:
     return {"status": "not_implemented"}
 
+
 @server.get("/srs", tags=["srs"])
 async def srs() -> dict:
     return {"status": "not_implemented"}
+
 
 @server.get("/anki_export", tags=["anki_export"])
 async def anki_export() -> dict:
