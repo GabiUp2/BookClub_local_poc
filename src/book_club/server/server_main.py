@@ -68,7 +68,13 @@ def _configure_logging() -> None:
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
+<<<<<<< HEAD
 # Lifespan of a server
+=======
+def _init_otel(app_name: str = "bookclub-server", app_version: str = "0.0.1"):
+    pass
+
+>>>>>>> 76d3c2feeffab2c155e350b6327b15e59b37ecd9
 async def lifespan(app: fastapi.FastAPI):
     # startup
     app.state.started_at = time.time()
