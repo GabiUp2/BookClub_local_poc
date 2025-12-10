@@ -1,19 +1,22 @@
-import logging
+import os
+import argparse
+from dotenv import load_dotenv
+from google import genai
 
+# ENV Solving
+load_dotenv()
+api_key = os.environ.get("GEMINI_API_KEY")
+gemini_model = os.environ.get("GEMINI_MODEL")
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
-logger.addHandler(logging.FileHandler("./logs/main.log", mode="a", encoding="utf-8", delay=False))
+if api_key is None:
+    raise ValueError("GEMINI_API_KEY either does not exist in 'env.' file or is empty.")
 
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s')
-logger.handlers[0].setFormatter(formatter)
-logger.handlers[1].setFormatter(formatter)
+# CLI Params solving:
+parser = argparse.ArgumentParser(description="Chatbot")
+parser.add_argument("user_prompt", type=str, help="User prompt")
+args = parser.parse_args()
 
+client = genai.Client(api_key=api_key)
 
-def main():
-    logger.info("Hello from bookclub-local-poc!")
-
-
-if __name__ == "__main__":
-    main()
+response = client.models.generate_content(model=gemini_model, contents=args.user_prompt)
+print(f"Prompt tokens: {response.usage_metadata.prompt_token_count} \nResponse tokens: {response.usage_metadata.candidates_token_count}\n Response:\n{response.text}")
