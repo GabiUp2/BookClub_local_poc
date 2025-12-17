@@ -2,6 +2,8 @@ import os
 import argparse
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
+
 
 # ENV Solving
 load_dotenv()
@@ -14,9 +16,20 @@ if api_key is None:
 # CLI Params solving:
 parser = argparse.ArgumentParser(description="Chatbot")
 parser.add_argument("user_prompt", type=str, help="User prompt")
+parser.add_argument(
+    "-v", "--verbose", action="store_true", help="Enable verbose output"
+)
 args = parser.parse_args()
 
 client = genai.Client(api_key=api_key)
 
-response = client.models.generate_content(model=gemini_model, contents=args.user_prompt)
-print(f"Prompt tokens: {response.usage_metadata.prompt_token_count} \nResponse tokens: {response.usage_metadata.candidates_token_count}\n Response:\n{response.text}")
+messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
+
+response = client.models.generate_content(model=gemini_model, contents=messages)
+
+if args.verbose:
+    print(
+        f"User prompt: {args.user_prompt}\nPrompt tokens: {response.usage_metadata.prompt_token_count} \nResponse tokens: {response.usage_metadata.candidates_token_count}\nResponse:\n{response.text}"
+    )
+else:
+    print(response.text)
