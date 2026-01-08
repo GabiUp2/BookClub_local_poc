@@ -3,16 +3,36 @@ import time
 import atexit
 import datetime
 import logging
+import uuid
+from pathlib import Path
+
 import fastapi
-from fastapi import Response
+from fastapi import Response, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
 from prometheus_client import multiprocess
 from prometheus_client import platform_collector
 
-from book_club.observability.ExecutionTimings import track_timing
+# NOTE: observability imports (e.g., track_timing) are available locally but
+# require PYTHONPATH adjustments in Docker. Add when needed with proper setup.
 
 logger = logging.getLogger(__name__)
+
+# PDF storage configuration
+PDF_STORAGE_DIR = Path(os.getenv("PDF_STORAGE_DIR", "/pdfs"))
+MAX_PDF_SIZE_MB = int(os.getenv("MAX_PDF_SIZE_MB", "50"))
+ALLOWED_CONTENT_TYPES = {"application/pdf"}
+
+
+class PDFUploadResponse(BaseModel):
+    """Response model for PDF upload endpoint."""
+
+    filename: str
+    original_filename: str
+    size_bytes: int
+    path: str
+    message: str
 
 # CORS configuration
 ALLOWED_ORIGINS = [
@@ -170,3 +190,75 @@ async def srs() -> dict:
 @server.get("/anki_export", tags=["anki_export"])
 async def anki_export() -> dict:
     return {"status": "not_implemented"}
+
+
+@server.post("/upload-pdf", tags=["ingest"], response_model=PDFUploadResponse)
+async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
+    """Upload a PDF file for processing.
+
+    The file is saved to the configured PDF storage directory with a unique
+    filename to avoid collisions.
+
+    Args:
+        file: The uploaded PDF file.
+
+    Returns:
+        PDFUploadResponse with file metadata and storage path.
+
+    Raises:
+        HTTPException: If the file is not a PDF or exceeds size limit.
+    """
+    # Validate content type
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {file.content_type}. Only PDF files are allowed.",
+        )
+
+    # Validate filename extension
+    original_filename = file.filename or "unknown.pdf"
+    if not original_filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="File must have a .pdf extension.",
+        )
+
+    # Read file content
+    content = await file.read()
+    size_bytes = len(content)
+
+    # Validate file size
+    max_size_bytes = MAX_PDF_SIZE_MB * 1024 * 1024
+    if size_bytes > max_size_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {size_bytes / (1024 * 1024):.1f}MB exceeds limit of {MAX_PDF_SIZE_MB}MB.",
+        )
+
+    # Ensure storage directory exists
+    PDF_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate unique filename to avoid collisions
+    unique_id = uuid.uuid4().hex[:8]
+    safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in original_filename)
+    unique_filename = f"{unique_id}_{safe_name}"
+    file_path = PDF_STORAGE_DIR / unique_filename
+
+    # Write file to storage
+    try:
+        file_path.write_bytes(content)
+        logger.info(f"PDF uploaded: {unique_filename} ({size_bytes} bytes)")
+    except OSError as e:
+        logger.error(f"Failed to save PDF {unique_filename}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save file to storage.",
+        )
+
+    return PDFUploadResponse(
+        filename=unique_filename,
+        original_filename=original_filename,
+        size_bytes=size_bytes,
+        path=str(file_path),
+        message="PDF uploaded successfully.",
+    )

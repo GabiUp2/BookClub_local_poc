@@ -15,6 +15,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi==0.59b0", # for tracing FastAPI
     "opentelemetry-instrumentation-requests==0.59b0", # for tracing HTTP requests
     "opentelemetry-instrumentation-logging==0.59b0", # for tracing logging
+    "python-multipart>=0.0.9", # for file uploads
 ]
 
 [dependency-groups]

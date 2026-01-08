@@ -58,6 +58,7 @@ services:
     volumes:
       - ./storage:/server/storage
       - ./src/book_club/server/logs:/logs
+      - ./data/pdfs:/pdfs
 
   # --- Prometheus (Metrics) ---
   prometheus:
