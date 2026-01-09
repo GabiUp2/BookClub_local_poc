@@ -14,8 +14,21 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, CollectorReg
 from prometheus_client import multiprocess
 from prometheus_client import platform_collector
 
-# NOTE: observability imports (e.g., track_timing) are available locally but
-# require PYTHONPATH adjustments in Docker. Add when needed with proper setup.
+# Observability imports - handle both local dev and Docker paths
+try:
+    from book_club.observability.IngestMetrics import ingest_metrics
+except ImportError:
+    try:
+        from observability.IngestMetrics import ingest_metrics
+    except ImportError:
+        # Final fallback - create no-op stub
+        class _NoOpIngestMetrics:
+            def observe_upload(self, *args, **kwargs): pass
+            def track_upload(self):
+                def decorator(fn):
+                    return fn
+                return decorator
+        ingest_metrics = _NoOpIngestMetrics()
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +58,21 @@ PROM_MULTIPROC_DIR = os.getenv("PROMETHEUS_MULTIPROC_DIR")  # e.g., /tmp/prom_mu
 
 
 def _build_singleprocess_registry():
-    registry = CollectorRegistry()
-    platform_collector.PlatformCollector(registry=registry)
-    return registry
+    """Return the default registry for singleprocess mode.
+
+    This includes all metrics registered via prometheus_client's default registry,
+    including IngestMetrics and any other application metrics.
+    """
+    from prometheus_client import REGISTRY
+    return REGISTRY
 
 
 def _build_multiprocess_registry():
+    """Build a registry for multiprocess (Gunicorn) mode.
+
+    In multiprocess mode, metrics are written to files in PROMETHEUS_MULTIPROC_DIR
+    and the MultiProcessCollector aggregates them across workers.
+    """
     registry = CollectorRegistry()
     multiprocess.MultiProcessCollector(registry)
     platform_collector.PlatformCollector(registry=registry)
@@ -199,6 +221,12 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
     The file is saved to the configured PDF storage directory with a unique
     filename to avoid collisions.
 
+    Metrics emitted:
+    - bookclub_pdf_upload_requests_total{status}
+    - bookclub_pdf_upload_duration_seconds{status}
+    - bookclub_pdf_upload_size_bytes{status}
+    - bookclub_pdf_upload_bytes_total{status}
+
     Args:
         file: The uploaded PDF file.
 
@@ -208,57 +236,79 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
     Raises:
         HTTPException: If the file is not a PDF or exceeds size limit.
     """
-    # Validate content type
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type: {file.content_type}. Only PDF files are allowed.",
-        )
+    import time as _time
+    start_time = _time.perf_counter()
+    size_bytes = 0
 
-    # Validate filename extension
-    original_filename = file.filename or "unknown.pdf"
-    if not original_filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=400,
-            detail="File must have a .pdf extension.",
-        )
-
-    # Read file content
-    content = await file.read()
-    size_bytes = len(content)
-
-    # Validate file size
-    max_size_bytes = MAX_PDF_SIZE_MB * 1024 * 1024
-    if size_bytes > max_size_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large: {size_bytes / (1024 * 1024):.1f}MB exceeds limit of {MAX_PDF_SIZE_MB}MB.",
-        )
-
-    # Ensure storage directory exists
-    PDF_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Generate unique filename to avoid collisions
-    unique_id = uuid.uuid4().hex[:8]
-    safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in original_filename)
-    unique_filename = f"{unique_id}_{safe_name}"
-    file_path = PDF_STORAGE_DIR / unique_filename
-
-    # Write file to storage
     try:
-        file_path.write_bytes(content)
-        logger.info(f"PDF uploaded: {unique_filename} ({size_bytes} bytes)")
-    except OSError as e:
-        logger.error(f"Failed to save PDF {unique_filename}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to save file to storage.",
+        # Validate content type
+        if file.content_type not in ALLOWED_CONTENT_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type: {file.content_type}. Only PDF files are allowed.",
+            )
+
+        # Validate filename extension
+        original_filename = file.filename or "unknown.pdf"
+        if not original_filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=400,
+                detail="File must have a .pdf extension.",
+            )
+
+        # Read file content
+        content = await file.read()
+        size_bytes = len(content)
+
+        # Validate file size
+        max_size_bytes = MAX_PDF_SIZE_MB * 1024 * 1024
+        if size_bytes > max_size_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large: {size_bytes / (1024 * 1024):.1f}MB exceeds limit of {MAX_PDF_SIZE_MB}MB.",
+            )
+
+        # Ensure storage directory exists
+        PDF_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Generate unique filename to avoid collisions
+        unique_id = uuid.uuid4().hex[:8]
+        safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in original_filename)
+        unique_filename = f"{unique_id}_{safe_name}"
+        file_path = PDF_STORAGE_DIR / unique_filename
+
+        # Write file to storage
+        try:
+            file_path.write_bytes(content)
+            logger.info(f"PDF uploaded: {unique_filename} ({size_bytes} bytes)")
+        except OSError as e:
+            logger.error(f"Failed to save PDF {unique_filename}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to save file to storage.",
+            )
+
+        # Record success metrics
+        duration_s = _time.perf_counter() - start_time
+        ingest_metrics.observe_upload(size_bytes=size_bytes, status="ok", duration_s=duration_s)
+
+        return PDFUploadResponse(
+            filename=unique_filename,
+            original_filename=original_filename,
+            size_bytes=size_bytes,
+            path=str(file_path),
+            message="PDF uploaded successfully.",
         )
 
-    return PDFUploadResponse(
-        filename=unique_filename,
-        original_filename=original_filename,
-        size_bytes=size_bytes,
-        path=str(file_path),
-        message="PDF uploaded successfully.",
-    )
+    except HTTPException:
+        # Record error metrics for HTTP exceptions (client errors)
+        duration_s = _time.perf_counter() - start_time
+        ingest_metrics.observe_upload(size_bytes=size_bytes, status="error", duration_s=duration_s)
+        raise
+
+    except Exception as e:
+        # Record error metrics for unexpected exceptions
+        duration_s = _time.perf_counter() - start_time
+        ingest_metrics.observe_upload(size_bytes=size_bytes, status="error", duration_s=duration_s)
+        logger.exception(f"Unexpected error during PDF upload: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error during upload.")

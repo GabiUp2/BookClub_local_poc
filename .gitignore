@@ -31,4 +31,4 @@ observability/grafana/data/*
 data/qdrant/*
 
 # Data
-/pdfs
+/data/*

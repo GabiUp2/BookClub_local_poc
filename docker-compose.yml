@@ -50,6 +50,8 @@ services:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      # prometheus_client requires lowercase env var for multiprocess mode
+      prometheus_multiproc_dir: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
       PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
       LOGS_FORMAT: ${LOGS_FORMAT:-%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s}
       LOGS_LEVEL: ${LOGS_LEVEL:-INFO}

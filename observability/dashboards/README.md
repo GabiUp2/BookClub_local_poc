@@ -133,6 +133,47 @@ High-level dashboard combining key metrics for at-a-glance monitoring.
 
 ---
 
+### PDF Upload / Ingest
+
+#### **PDF Upload - RED Metrics & Throughput** (`pdf_upload_dashboard.json`)
+**UID:** `pdf-upload-red`
+
+Monitors the `/upload-pdf` endpoint with RED metrics (Rate, Errors, Duration) plus file size distribution and data throughput.
+
+**Panels:**
+
+*RED Metrics Section:*
+1. **Request Rate (R)** - Upload requests per second by status (ok/error)
+2. **Error Rate (E)** - Error percentage gauge with thresholds
+3. **Total Requests** - Cumulative request count
+4. **Total Errors** - Cumulative error count
+5. **Duration Percentiles (D)** - P50, P95, P99 latency over time
+6. **P95 Latency** - Current P95 stat
+7. **Avg Duration** - Mean upload duration
+8. **Duration Distribution** - Heatmap of response times
+
+*File Size & Throughput Section:*
+9. **File Size Distribution** - Histogram of uploaded file sizes
+10. **Avg File Size** - Mean file size stat
+11. **P95 File Size** - 95th percentile file size
+12. **Upload Throughput** - Bytes/sec upload rate
+13. **Total Bytes Uploaded** - Cumulative successful bytes
+14. **Bytes from Failed Uploads** - Attempted but failed bytes
+
+**Metrics Used:**
+- `bookclub_pdf_upload_requests_total{status}` - Request counter
+- `bookclub_pdf_upload_duration_seconds{status}` - Duration histogram
+- `bookclub_pdf_upload_size_bytes{status}` - File size histogram
+- `bookclub_pdf_upload_bytes_total{status}` - Throughput counter
+
+**Use Cases:**
+- Monitor PDF upload endpoint health
+- Track storage throughput and capacity planning
+- Identify upload failures and their causes
+- Analyse file size patterns from users
+
+---
+
 ## Importing Dashboards
 
 ### Method 1: Via Grafana UI
@@ -206,7 +247,8 @@ observability/dashboards/
 ├── execution_timings_latency.json          # Latency & performance
 ├── execution_timings_throughput.json       # Throughput & request rate
 ├── execution_timings_errors.json           # Errors & reliability
-└── execution_timings_overview.json         # Overview & SLA
+├── execution_timings_overview.json         # Overview & SLA
+└── pdf_upload_dashboard.json               # PDF Upload RED + throughput
 ```
 
 ---
@@ -229,6 +271,12 @@ All dashboards require:
 - `{namespace}_{module}_{function}_seconds{status}` - Gauge (last duration)
 - `{namespace}_{module}_{function}_calls_total{status}` - Counter (total calls)
 - `{namespace}_{module}_{function}_seconds_bucket{status, le}` - Histogram (distribution)
+
+### PDF Upload
+- `bookclub_pdf_upload_requests_total{status}` - Counter (total requests)
+- `bookclub_pdf_upload_duration_seconds{status}` - Histogram (request duration)
+- `bookclub_pdf_upload_size_bytes{status}` - Histogram (file size distribution)
+- `bookclub_pdf_upload_bytes_total{status}` - Counter (total bytes uploaded)
 
 ---
 
