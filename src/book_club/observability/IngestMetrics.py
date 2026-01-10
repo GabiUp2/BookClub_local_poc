@@ -29,7 +29,7 @@ from prometheus_client import (
 REGISTRY = DEFAULT_REGISTRY
 
 # Metric name prefix
-_NS = "bookclub"
+_NS = "preprocessing_server"
 _SUBSYSTEM = "pdf_upload"
 
 # --- Metric Definitions ---

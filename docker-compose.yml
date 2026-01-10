@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     working_dir: /app
     depends_on:
-      - bookclub-server
+      - bookclub-preprocessing-server
     env_file:
       - ./src/book_club/app/.env
     environment:
@@ -35,31 +35,31 @@ services:
       - /app/.next
     command: sh -c "npm install && npm run dev"
 
-  # --- Server backend (FastAPI) ---
-  bookclub-server:
+  # --- Preprocessing server backend (FastAPI) ---
+  bookclub-preprocessing-server:
     build:
       context: ./src/book_club/
-      dockerfile: server/Dockerfile
-    container_name: bookclub-server
+      dockerfile: preprocessing_server/Dockerfile
+    container_name: bookclub-preprocessing-server
     restart: unless-stopped
     depends_on:
       - qdrant
     env_file:
-      - ./src/book_club/server/.env
+      - ./src/book_club/preprocessing_server/.env
     environment:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       # prometheus_client requires lowercase env var for multiprocess mode
-      prometheus_multiproc_dir: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
-      PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
+      prometheus_multiproc_dir: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir} # needs to be in small letters?
+      PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir} # TODO: i'm not sure do i need to keep this in both versions?
       LOGS_FORMAT: ${LOGS_FORMAT:-%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s}
       LOGS_LEVEL: ${LOGS_LEVEL:-INFO}
     ports:
       - "8010:8010"
     volumes:
-      - ./storage:/server/storage
-      - ./src/book_club/server/logs:/logs
+      - ./storage:/preprocessing_server/storage
+      - ./src/book_club/preprocessing_server/logs:/logs
       - ./data/pdfs:/pdfs
 
   # --- Prometheus (Metrics) ---
@@ -118,7 +118,7 @@ services:
       - /var/log:/var/log:ro
       - ./logs:/development_logs/ # general development logs
       - ./src/book_club/app/logs:/app_logs/ # app run specific logs
-      - ./src/book_club/server/logs:/server_logs/ # server run specific logs
+      - ./src/book_club/preprocessing_server/logs:/server_logs/ # server run specific logs
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     ports:
       - "12345:12345"  # Alloy UI

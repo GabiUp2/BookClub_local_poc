@@ -36,11 +36,11 @@ def _get_or_create(fn: Callable, namespace="server",
                    histogram_buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5)):
 
     names = _metric_names(fn, namespace)
-    
+
     # In multiprocess mode (Gunicorn), metrics are registered by master process.
     # Workers inherit the registry but not the module-level caches, causing registration to fail.
     # We catch ValueError and look up existing collectors from the registry.
-    
+
     # In multiprocess mode, metrics may already be registered by master process
     # Just use no-op objects if registration fails - metrics still work via file writes
     if names["gauge"] not in _GAUGES:
@@ -52,7 +52,7 @@ def _get_or_create(fn: Callable, namespace="server",
         except ValueError:
             # Already registered - use no-op (multiprocess mode writes to files anyway)
             _GAUGES[names["gauge"]] = _NoOpMetric()
-    
+
     if names["counter"] not in _COUNTERS:
         try:
             _COUNTERS[names["counter"]] = Counter(
@@ -61,7 +61,7 @@ def _get_or_create(fn: Callable, namespace="server",
             )
         except ValueError:
             _COUNTERS[names["counter"]] = _NoOpMetric()
-    
+
     if names["histogram"] not in _HISTOS:
         metric_name = names["histogram"].replace("_bucket", "")
         try:
@@ -82,8 +82,8 @@ def track_timing(namespace: str = "server", registry=DEFAULT_REGISTRY):
       - sets a Gauge (last duration)
       - increments a Counter (calls)
       - observes a Histogram (for p95 etc. + exemplars)
-    Note: I should not add correlation IDs as labels as label is a key and it will clutter the labels selections with low-cardinality values. 
-    Use exemplars on the histogram if I have a trace_id.
+    Note: I should not add correlation IDs as labels, as label is a key and it will clutter the labels selections with low-cardinality values.
+    Solution would be to use exemplars on the histogram if I have a trace_id.
     #TODO: Extend for Tempo once The section of Prometheus is done.
     """
     def decorator(fn: Callable):

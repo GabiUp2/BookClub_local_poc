@@ -2,15 +2,15 @@
 # Use Microsoft Container Registry to avoid Docker Hub TLS issues behind corporate proxies
 FROM mcr.microsoft.com/devcontainers/python:3.11
 
-WORKDIR /server
-COPY server/requirements.txt ./
+WORKDIR /preprocessing_server
+COPY preprocessing_server/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create log directory
 RUN mkdir -p /logs
 
 # Copy src code
-COPY server/ .
+COPY preprocessing_server/ .
 
 # Copy observability modules
 COPY observability/ ./observability
