@@ -71,10 +71,10 @@ class IngestMetrics:
     Container for PDF upload/ingest metrics.
 
     Metrics exposed:
-    - bookclub_pdf_upload_requests_total{status} - Counter (RED: Rate + Errors)
-    - bookclub_pdf_upload_duration_seconds{status} - Histogram (RED: Duration)
-    - bookclub_pdf_upload_size_bytes{status} - Histogram (file size distribution)
-    - bookclub_pdf_upload_bytes_total{status} - Counter (throughput)
+    - preprocessing_server_pdf_upload_requests_total{status} - Counter (RED: Rate + Errors)
+    - preprocessing_server_pdf_upload_duration_seconds{status} - Histogram (RED: Duration)
+    - preprocessing_server_pdf_upload_size_bytes{status} - Histogram (file size distribution)
+    - preprocessing_server_pdf_upload_bytes_total{status} - Counter (throughput)
     """
 
     def __init__(self):

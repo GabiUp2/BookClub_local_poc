@@ -117,6 +117,11 @@ make test-cleanup-behavior
   - Cards generated per session
   - Q&A latency (if implemented)
 
+# Possible confusions in code:
+## interchangibility of term "server" and "preprocessing server".
+The later term was introduced later in development when there was the need to distnguish one server from another server, already then there were more than 2k+ uses of term server in codebase and i just didnt had heart to go through each one of them. I've made it so the tests would run and make files target were clear, then left it there.
+ So if it is not clear what server the term "server" relates to, the "preprocessing_server" might be a good shoot to start with.
+
 # Lessons learned
 
 ## Docker and sudo
@@ -139,7 +144,7 @@ First of all command `docker compose config` shows solved configuration file wit
 
 If Docker Compose attributes are written to first search for a variable in the environment, then the top `.env` file values will have precedence. e.g "`TOP_ENV_FILE:  ${TOP_ENV_FILE:-DOCKER_COMPOSE_DIRECT}`".
 
-Also docker compose can feed singular environment variables via `environment` attribute to the container or target .env file that is mounted to the container e.g "`env_file: - ./src/book_club/server/.env`".
+Also docker compose can feed singular environment variables via `environment` attribute to the container or target .env file that is mounted to the container e.g "`env_file: - ./src/book_club/preprocessing_server/.env`".
 
 Precedence of solving environment variables (from highest to lowest) based on docker compose docs:
 
@@ -168,3 +173,6 @@ Also same for the npm it has `npm ls` but be cautious it has the `--depth` param
 For Rust its `cargo tree`.
 For Ubuntu its external, not installed by default, but official package `apt-rdepends`.
 For Arch its 'pactree' and its installed by default.
+
+## If you don't know how big project will become - DO NOT USE GENERAL NAMES FOR IT'S MODULES!
+You don't need specificity untill the project gets big and once it gets big you need to propagate changes to many places in the codebase. I just spend 2,5 hour becouse I needed to change the name of the "server" to "preprocessing-server", and more features you have more stuff you need to correct, form module imports to observability metrics labels in dashboard. I think it would be faster if i had name the server something like "server_A" or even "server_1", then search would be much easier as term "server" can be used in internal logic where it is valid and shoud have stayed.

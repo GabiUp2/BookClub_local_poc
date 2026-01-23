@@ -1,9 +1,9 @@
-# tests/server/test_server_main.py
+# tests/server/test_preprocessing_server_main.py
 from unittest.mock import MagicMock
 
 import pytest
 
-import book_club.server.server_main as server_main
+import book_club.preprocessing_server.server_main as server_main
 
 
 def test_register_mark_dead_marks_process_when_multiprocess_enabled(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -137,7 +137,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (rate(bookclub_pdf_upload_requests_total[$__rate_interval]))",
+          "expr": "sum by (status) (rate(preprocessing_server_pdf_upload_requests_total[$__rate_interval]))",
           "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
@@ -208,7 +208,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "100 * sum(rate(bookclub_pdf_upload_requests_total{status=\"error\"}[$__rate_interval])) / sum(rate(bookclub_pdf_upload_requests_total[$__rate_interval]))",
+          "expr": "100 * sum(rate(preprocessing_server_pdf_upload_requests_total{status=\"error\"}[$__rate_interval])) / sum(rate(preprocessing_server_pdf_upload_requests_total[$__rate_interval]))",
           "legendFormat": "Error Rate %",
           "range": true,
           "refId": "A"
@@ -271,7 +271,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(bookclub_pdf_upload_requests_total)",
+          "expr": "sum(preprocessing_server_pdf_upload_requests_total)",
           "legendFormat": "Total Requests",
           "range": true,
           "refId": "A"
@@ -342,7 +342,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(bookclub_pdf_upload_requests_total{status=\"error\"})",
+          "expr": "sum(preprocessing_server_pdf_upload_requests_total{status=\"error\"})",
           "legendFormat": "Errors",
           "range": true,
           "refId": "A"
@@ -444,7 +444,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum(rate(bookclub_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(preprocessing_server_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P50",
           "range": true,
           "refId": "A"
@@ -455,7 +455,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(bookclub_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(preprocessing_server_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P95",
           "range": true,
           "refId": "B"
@@ -466,7 +466,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(bookclub_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(preprocessing_server_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P99",
           "range": true,
           "refId": "C"
@@ -537,7 +537,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(bookclub_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(preprocessing_server_pdf_upload_duration_seconds_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P95",
           "range": true,
           "refId": "A"
@@ -608,7 +608,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(bookclub_pdf_upload_duration_seconds_sum{status=\"ok\"}[$__rate_interval])) / sum(rate(bookclub_pdf_upload_duration_seconds_count{status=\"ok\"}[$__rate_interval]))",
+          "expr": "sum(rate(preprocessing_server_pdf_upload_duration_seconds_sum{status=\"ok\"}[$__rate_interval])) / sum(rate(preprocessing_server_pdf_upload_duration_seconds_count{status=\"ok\"}[$__rate_interval]))",
           "legendFormat": "Avg Duration",
           "range": true,
           "refId": "A"
@@ -687,7 +687,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(bookclub_pdf_upload_duration_seconds_bucket[$__rate_interval])) by (le)",
+          "expr": "sum(increase(preprocessing_server_pdf_upload_duration_seconds_bucket[$__rate_interval])) by (le)",
           "format": "heatmap",
           "legendFormat": "{{le}}",
           "range": true,
@@ -792,9 +792,9 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(bookclub_pdf_upload_size_bytes_bucket{status=\"ok\"}[$__range])) by (le)",
+          "expr": "sum(increase(preprocessing_server_pdf_upload_size_bytes_bucket{status=\"ok\"}[$__range])) by (le)",
           "format": "heatmap",
-          "legendFormat": "{{le}}",
+          "legendFormat": "≤ {{le}} bytes",
           "range": true,
           "refId": "A"
         }
@@ -864,7 +864,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(bookclub_pdf_upload_size_bytes_sum{status=\"ok\"}[$__rate_interval])) / sum(rate(bookclub_pdf_upload_size_bytes_count{status=\"ok\"}[$__rate_interval]))",
+          "expr": "sum(rate(preprocessing_server_pdf_upload_size_bytes_sum{status=\"ok\"}[$__rate_interval])) / sum(rate(preprocessing_server_pdf_upload_size_bytes_count{status=\"ok\"}[$__rate_interval]))",
           "legendFormat": "Avg Size",
           "range": true,
           "refId": "A"
@@ -935,7 +935,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(bookclub_pdf_upload_size_bytes_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(preprocessing_server_pdf_upload_size_bytes_bucket{status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P95 Size",
           "range": true,
           "refId": "A"
@@ -1029,7 +1029,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(bookclub_pdf_upload_bytes_total{status=\"ok\"}[$__rate_interval]))",
+          "expr": "sum(rate(preprocessing_server_pdf_upload_bytes_total{status=\"ok\"}[$__rate_interval]))",
           "legendFormat": "Throughput",
           "range": true,
           "refId": "A"
@@ -1100,7 +1100,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(bookclub_pdf_upload_bytes_total{status=\"ok\"})",
+          "expr": "sum(preprocessing_server_pdf_upload_bytes_total{status=\"ok\"})",
           "legendFormat": "Total Bytes",
           "range": true,
           "refId": "A"
@@ -1171,7 +1171,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(bookclub_pdf_upload_bytes_total{status=\"error\"}) or vector(0)",
+          "expr": "sum(preprocessing_server_pdf_upload_bytes_total{status=\"error\"}) or vector(0)",
           "legendFormat": "Failed Bytes",
           "range": true,
           "refId": "A"

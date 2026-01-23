@@ -23,11 +23,15 @@ except ImportError:
     except ImportError:
         # Final fallback - create no-op stub
         class _NoOpIngestMetrics:
-            def observe_upload(self, *args, **kwargs): pass
+            def observe_upload(self, *args, **kwargs):
+                pass
+
             def track_upload(self):
                 def decorator(fn):
                     return fn
+
                 return decorator
+
         ingest_metrics = _NoOpIngestMetrics()
 
 logger = logging.getLogger(__name__)
@@ -47,6 +51,7 @@ class PDFUploadResponse(BaseModel):
     path: str
     message: str
 
+
 # CORS configuration
 ALLOWED_ORIGINS = [
     os.getenv("FRONTEND_ORIGIN", "http://localhost:8000"),
@@ -64,6 +69,7 @@ def _build_singleprocess_registry():
     including IngestMetrics and any other application metrics.
     """
     from prometheus_client import REGISTRY
+
     return REGISTRY
 
 
@@ -126,7 +132,9 @@ def _configure_logging() -> None:
         logger.addHandler(file_handler)
 
 
-def _init_otel(app_name: str = "bookclub-server", app_version: str = "0.0.1"):
+def _init_otel(
+    app_name: str = "bookclub-preprocessing-server", app_version: str = "0.0.1"
+):
     pass
 
 
@@ -237,6 +245,7 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
         HTTPException: If the file is not a PDF or exceeds size limit.
     """
     import time as _time
+
     start_time = _time.perf_counter()
     size_bytes = 0
 
@@ -273,7 +282,9 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
 
         # Generate unique filename to avoid collisions
         unique_id = uuid.uuid4().hex[:8]
-        safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in original_filename)
+        safe_name = "".join(
+            c if c.isalnum() or c in "._-" else "_" for c in original_filename
+        )
         unique_filename = f"{unique_id}_{safe_name}"
         file_path = PDF_STORAGE_DIR / unique_filename
 
@@ -290,7 +301,9 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
 
         # Record success metrics
         duration_s = _time.perf_counter() - start_time
-        ingest_metrics.observe_upload(size_bytes=size_bytes, status="ok", duration_s=duration_s)
+        ingest_metrics.observe_upload(
+            size_bytes=size_bytes, status="ok", duration_s=duration_s
+        )
 
         return PDFUploadResponse(
             filename=unique_filename,
@@ -303,12 +316,18 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
     except HTTPException:
         # Record error metrics for HTTP exceptions (client errors)
         duration_s = _time.perf_counter() - start_time
-        ingest_metrics.observe_upload(size_bytes=size_bytes, status="error", duration_s=duration_s)
+        ingest_metrics.observe_upload(
+            size_bytes=size_bytes, status="error", duration_s=duration_s
+        )
         raise
 
     except Exception as e:
         # Record error metrics for unexpected exceptions
         duration_s = _time.perf_counter() - start_time
-        ingest_metrics.observe_upload(size_bytes=size_bytes, status="error", duration_s=duration_s)
+        ingest_metrics.observe_upload(
+            size_bytes=size_bytes, status="error", duration_s=duration_s
+        )
         logger.exception(f"Unexpected error during PDF upload: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error during upload.")
+        raise HTTPException(
+            status_code=500, detail="Internal server error during upload."
+        )

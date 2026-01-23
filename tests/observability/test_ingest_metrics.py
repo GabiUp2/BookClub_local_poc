@@ -117,33 +117,25 @@ class TestIngestMetricsClass:
 
     def test_observe_upload_success_increments_requests(self, isolated_metrics):
         """observe_upload increments request counter with correct status."""
-        isolated_metrics.observe_upload(
-            size_bytes=1024, status="ok", duration_s=0.5
-        )
+        isolated_metrics.observe_upload(size_bytes=1024, status="ok", duration_s=0.5)
         isolated_metrics._requests_total.labels.assert_called_with(status="ok")
         isolated_metrics._requests_total.inc.assert_called_once()
 
     def test_observe_upload_error_increments_requests(self, isolated_metrics):
         """observe_upload increments request counter on error."""
-        isolated_metrics.observe_upload(
-            size_bytes=512, status="error", duration_s=0.1
-        )
+        isolated_metrics.observe_upload(size_bytes=512, status="error", duration_s=0.1)
         isolated_metrics._requests_total.labels.assert_called_with(status="error")
         isolated_metrics._requests_total.inc.assert_called_once()
 
     def test_observe_upload_increments_bytes_counter(self, isolated_metrics):
         """observe_upload increments bytes counter by file size."""
-        isolated_metrics.observe_upload(
-            size_bytes=2048, status="ok", duration_s=0.3
-        )
+        isolated_metrics.observe_upload(size_bytes=2048, status="ok", duration_s=0.3)
         isolated_metrics._bytes_total.labels.assert_called_with(status="ok")
         isolated_metrics._bytes_total.inc.assert_called_once_with(2048)
 
     def test_observe_upload_observes_duration_histogram(self, isolated_metrics):
         """observe_upload records duration in histogram."""
-        isolated_metrics.observe_upload(
-            size_bytes=1024, status="ok", duration_s=0.75
-        )
+        isolated_metrics.observe_upload(size_bytes=1024, status="ok", duration_s=0.75)
         isolated_metrics._duration_seconds.labels.assert_called_with(status="ok")
         isolated_metrics._duration_seconds.observe.assert_called_once_with(0.75)
 
@@ -312,17 +304,15 @@ class TestIngestMetricsIntegration:
 
     def test_metrics_appear_in_prometheus_output(self, fresh_metrics, fresh_registry):
         """Metrics should appear in Prometheus text output after observation."""
-        fresh_metrics.observe_upload(
-            size_bytes=1_000_000, status="ok", duration_s=0.5
-        )
+        fresh_metrics.observe_upload(size_bytes=1_000_000, status="ok", duration_s=0.5)
 
         output = generate_latest(fresh_registry).decode("utf-8")
 
         # Check all four metric families are present
-        assert "bookclub_pdf_upload_requests_total" in output
-        assert "bookclub_pdf_upload_duration_seconds" in output
-        assert "bookclub_pdf_upload_size_bytes" in output
-        assert "bookclub_pdf_upload_bytes_total" in output
+        assert "preprocessing_server_pdf_upload_requests_total" in output
+        assert "preprocessing_server_pdf_upload_duration_seconds" in output
+        assert "preprocessing_server_pdf_upload_size_bytes" in output
+        assert "preprocessing_server_pdf_upload_bytes_total" in output
 
     def test_status_label_appears_in_output(self, fresh_metrics, fresh_registry):
         """Status label should appear with correct values."""
@@ -344,7 +334,7 @@ class TestIngestMetricsIntegration:
 
         # Find the bytes_total line for status="ok"
         # The counter should show 6000.0 total
-        assert "bookclub_pdf_upload_bytes_total" in output
+        assert "preprocessing_server_pdf_upload_bytes_total" in output
         # We can't easily parse the exact value, but verify metric exists
 
     def test_request_counter_increments(self, fresh_metrics, fresh_registry):
@@ -353,20 +343,18 @@ class TestIngestMetricsIntegration:
             fresh_metrics.observe_upload(size_bytes=100, status="ok", duration_s=0.01)
 
         output = generate_latest(fresh_registry).decode("utf-8")
-        assert "bookclub_pdf_upload_requests_total" in output
+        assert "preprocessing_server_pdf_upload_requests_total" in output
 
     def test_histogram_buckets_present(self, fresh_metrics, fresh_registry):
         """Histogram buckets should be present in output."""
-        fresh_metrics.observe_upload(
-            size_bytes=500_000, status="ok", duration_s=0.25
-        )
+        fresh_metrics.observe_upload(size_bytes=500_000, status="ok", duration_s=0.25)
 
         output = generate_latest(fresh_registry).decode("utf-8")
 
         # Duration histogram buckets
-        assert "bookclub_pdf_upload_duration_seconds_bucket" in output
+        assert "preprocessing_server_pdf_upload_duration_seconds_bucket" in output
         # Size histogram buckets
-        assert "bookclub_pdf_upload_size_bytes_bucket" in output
+        assert "preprocessing_server_pdf_upload_size_bytes_bucket" in output
 
     def test_duration_histogram_sum_and_count(self, fresh_metrics, fresh_registry):
         """Duration histogram should track sum and count."""
@@ -375,22 +363,18 @@ class TestIngestMetricsIntegration:
 
         output = generate_latest(fresh_registry).decode("utf-8")
 
-        assert "bookclub_pdf_upload_duration_seconds_sum" in output
-        assert "bookclub_pdf_upload_duration_seconds_count" in output
+        assert "preprocessing_server_pdf_upload_duration_seconds_sum" in output
+        assert "preprocessing_server_pdf_upload_duration_seconds_count" in output
 
     def test_size_histogram_sum_and_count(self, fresh_metrics, fresh_registry):
         """Size histogram should track sum and count."""
-        fresh_metrics.observe_upload(
-            size_bytes=1_000_000, status="ok", duration_s=0.1
-        )
-        fresh_metrics.observe_upload(
-            size_bytes=2_000_000, status="ok", duration_s=0.2
-        )
+        fresh_metrics.observe_upload(size_bytes=1_000_000, status="ok", duration_s=0.1)
+        fresh_metrics.observe_upload(size_bytes=2_000_000, status="ok", duration_s=0.2)
 
         output = generate_latest(fresh_registry).decode("utf-8")
 
-        assert "bookclub_pdf_upload_size_bytes_sum" in output
-        assert "bookclub_pdf_upload_size_bytes_count" in output
+        assert "preprocessing_server_pdf_upload_size_bytes_sum" in output
+        assert "preprocessing_server_pdf_upload_size_bytes_count" in output
 
 
 # ─── Multiprocess Mode Tests ──────────────────────────────────────────────────
@@ -406,7 +390,7 @@ class TestMultiprocessMode:
         # Create a registry and register a metric with the same name
         registry = CollectorRegistry()
         Counter(
-            "bookclub_pdf_upload_requests_total",
+            "preprocessing_server_pdf_upload_requests_total",
             "Pre-existing metric",
             ["status"],
             registry=registry,

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-import book_club.server.server_main as server_main
-from book_club.server.server_main import server
+import book_club.preprocessing_server.server_main as server_main
+from book_club.preprocessing_server.server_main import server
 
 
 @pytest.fixture

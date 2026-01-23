@@ -51,6 +51,10 @@ help: ## Show this help
 	@grep -E '^(compose-install|compose-version|compose-switch):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@blue "DEMO & TRAFFIC GENERATION"
+	@grep -E '^(demo-upload-errors|demo-upload-traffic):.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 	@blue "OBSERVABILITY VERIFICATION"
 	@grep -E '^(verify-observability|verify-quick|verify-logs|verify-integration):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -215,6 +219,63 @@ test-cleanup-behavior: ## Test all PROM_CLEANUP options (none, before, after, bo
 	@echo ""
 	@$(UV) run pytest tests/observability/test_pushgateway_cleanup.py -p no:xdist -o addopts="" -v
 
+# -------- Demo & Traffic Generation --------
+
+# Default counts for demo traffic (can override: make demo-upload-traffic OK=20 ERR=5)
+OK ?= 5
+ERR ?= 5
+
+demo-upload-errors: ## Generate PDF upload errors for dashboard demo
+	@$(colour_fns)
+	@blue "Generating PDF upload errors..."
+	@echo ""
+	@for i in $$(seq 1 $(ERR)); do \
+		curl -s -X POST http://localhost:8010/upload-pdf \
+			-F "file=@README.md;type=text/plain" > /dev/null && \
+		printf "\033[0;31mx\033[0m"; \
+	done
+	@echo ""
+	@echo ""
+	@green "Generated $(ERR) upload errors"
+	@echo ""
+	@blue "Check metrics:"
+	@curl -s 'http://localhost:9090/api/v1/query?query=preprocessing_server_pdf_upload_requests_total' 2>&1 | \
+		python3 -c "import sys,json; d=json.load(sys.stdin); \
+		[print(f'  status=\"{r[\"metric\"][\"status\"]}\": {int(float(r[\"value\"][1]))} requests') for r in d['data']['result']]"
+	@echo ""
+	@blue "View in Grafana: http://localhost:3000/d/pdf-upload/pdf-upload-red-metrics-throughput"
+
+demo-upload-traffic: ## Generate mixed PDF upload traffic (OK=5 ERR=5 by default)
+	@$(colour_fns)
+	@blue "Generating mixed PDF upload traffic ($(OK) success, $(ERR) errors)..."
+	@echo ""
+	@echo "%PDF-1.4\n%%EOF" > /tmp/demo_test.pdf
+	@for i in $$(seq 1 $(OK)); do \
+		curl -s -X POST http://localhost:8010/upload-pdf \
+			-F "file=@/tmp/demo_test.pdf;type=application/pdf" > /dev/null && \
+		printf "\033[0;32m.\033[0m"; \
+	done
+	@for i in $$(seq 1 $(ERR)); do \
+		curl -s -X POST http://localhost:8010/upload-pdf \
+			-F "file=@README.md;type=text/plain" > /dev/null && \
+		printf "\033[0;31mx\033[0m"; \
+	done
+	@rm -f /tmp/demo_test.pdf
+	@echo ""
+	@echo ""
+	@green "Generated $(OK) successes and $(ERR) errors"
+	@echo ""
+	@blue "Current metrics:"
+	@curl -s 'http://localhost:9090/api/v1/query?query=preprocessing_server_pdf_upload_requests_total' 2>&1 | \
+		python3 -c "import sys,json; d=json.load(sys.stdin); \
+		metrics={r['metric']['status']: int(float(r['value'][1])) for r in d['data']['result']}; \
+		ok=metrics.get('ok',0); err=metrics.get('error',0); total=ok+err; \
+		print(f'  Total: {total} requests'); \
+		print(f'  Success: {ok} ({100*ok/total:.1f}%)') if total else None; \
+		print(f'  Errors: {err} ({100*err/total:.1f}%)') if total else None"
+	@echo ""
+	@blue "View in Grafana: http://localhost:3000/d/pdf-upload/pdf-upload-red-metrics-throughput"
+
 # -------- Docker Compose v2 (installer) --------
 # To override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
 COMPOSE_VERSION ?= v2.29.2
@@ -332,11 +393,11 @@ verify-integration: ## End-to-end: app+server+observability
 	@until curl -sf http://localhost:8000/ >/dev/null; do sleep 1; done
 	@green "App reachable"
 	@blue "In-cluster: app -> server health"
-	@docker compose exec -T bookclub-app wget -qO- http://bookclub-server:8010/health | grep -q '"status":"ok"' && green "App can reach server" || red "App could not reach server"
+	@docker compose exec -T bookclub-app wget -qO- http://bookclub-preprocessing-server:8010/health | grep -q '"status":"ok"' && green "App can reach server" || red "App could not reach server"
 	@blue "Metrics endpoint"
 	@curl -sf http://localhost:8010/metrics | head -n 5 >/dev/null && green "/metrics served" || red "Metrics endpoint not available"
 	@blue "Prometheus targets"
-	@curl -sf http://localhost:9090/api/v1/targets | jq -e '.data.activeTargets[] | select(.labels.job=="bookclub-server" and .health=="up")' >/dev/null && green "Prometheus scraping bookclub-server" || (red "Prometheus target down"; exit 1)
+	@curl -sf http://localhost:9090/api/v1/targets | jq -e '.data.activeTargets[] | select(.labels.job=="bookclub-pre-processing" and .health=="up")' >/dev/null && green "Prometheus scraping bookclub-preprocessing-server" || (red "Prometheus target down"; exit 1)
 	@blue "Loki readiness"
 	@curl -sf -H "X-Scope-OrgID: local" http://localhost:3100/ready >/dev/null && green "Loki ready" || red "Loki not ready"
 	@blue "Grafana health"
@@ -379,12 +440,14 @@ purge-old-data: ## Clean all observability data (logs, metrics, traces) but keep
 	@yellow "   • All Loki log history"
 	@yellow "   • All Pushgateway metrics"
 	@yellow "   • All Qdrant vector data"
-	@yellow "   • Grafana session data"
+	@yellow "   • Grafana session data (password resets to admin/admin)"
 	@echo ""
 	@blue "This will be kept:"
 	@blue "   • All configuration files"
 	@blue "   • All Grafana dashboards"
 	@blue "   • All datasource definitions"
+	@echo ""
+	@blue "Note: Grafana will prompt you to change password on first login."
 	@echo ""
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo; \
@@ -396,7 +459,7 @@ purge-old-data: ## Clean all observability data (logs, metrics, traces) but keep
 		blue "2. Cleaning log files..."; \
 		rm -rf logs/*.log && green "Cleaned logs/"; \
 		rm -rf src/book_club/app/logs/*.log && green "Cleaned app logs/" || true; \
-		rm -rf src/book_club/server/logs/*.log && green "Cleaned server logs/" || true; \
+		rm -rf src/book_club/preprocessing_server/logs/*.log && green "Cleaned server logs/" || true; \
 		echo ""; \
 		blue "3. Cleaning Prometheus data..."; \
 		rm -rf observability/prometheus/data/* && green "Cleaned Prometheus data"; \

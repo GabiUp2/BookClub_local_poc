@@ -118,7 +118,7 @@ services:
       - /var/log:/var/log:ro
       - ./logs:/development_logs/ # general development logs
       - ./src/book_club/app/logs:/app_logs/ # app run specific logs
-      - ./src/book_club/preprocessing_server/logs:/server_logs/ # server run specific logs
+      - ./src/book_club/preprocessing_server/logs:/preprocessing_server/ # server run specific logs
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     ports:
       - "12345:12345"  # Alloy UI
@@ -141,7 +141,7 @@ services:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./observability/grafana/data:/var/lib/grafana
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./observability/dashboards:/var/lib/grafana/dashboards
 
 networks:
   default:

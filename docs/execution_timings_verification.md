@@ -6,14 +6,14 @@ Practical guide for verifying, testing, and integrating the execution timing met
 
 ## Quick Verification
 
-### 1. Start the Server
+### 1. Start the preprocessing_server
 
 ```bash
 # Development mode (single process)
 make dev
 
 # Or manually
-uvicorn book_club.server.server_main:server --host 0.0.0.0 --port 8010 --reload
+uvicorn book_club.preprocessing_server.server_main:server --host 0.0.0.0 --port 8010 --reload
 ```
 
 ### 2. Generate Traffic
@@ -35,7 +35,7 @@ curl http://localhost:8010/metrics
 curl http://localhost:8010/metrics | grep "_seconds{" | grep "server_book_club"
 
 # Check specific function
-curl http://localhost:8010/metrics | grep "startup_book_club_server_server_main_startup"
+curl http://localhost:8010/metrics | grep "startup_book_club_preprocessing_server_server_main_startup"
 ```
 
 ### 4. Verify in Prometheus
@@ -96,7 +96,7 @@ async def generate_flashcards(text: str, _trace_id: str = None):
 **Docker Compose:**
 ```yaml
 services:
-  bookclub-server:
+  bookclub-preprocessing-server:
     environment:
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
     volumes:
@@ -105,7 +105,7 @@ services:
       gunicorn -w 4
       -k uvicorn.workers.UvicornWorker
       --bind 0.0.0.0:8010
-      book_club.server.server_main:server
+      book_club.preprocessing_server.server_main:server
 
 volumes:
   prometheus-multiproc:
@@ -121,7 +121,7 @@ rm -rf ${PROMETHEUS_MULTIPROC_DIR}/*.db
 exec gunicorn -w 4 \
   -k uvicorn.workers.UvicornWorker \
   --bind 0.0.0.0:8010 \
-  book_club.server.server_main:server
+  book_club.preprocessing_server.server_main:server
 ```
 
 ### Step 4: Update /metrics Endpoint
@@ -147,10 +147,10 @@ async def metrics():
 **prometheus.yml:**
 ```yaml
 scrape_configs:
-  - job_name: 'bookclub-server'
+  - job_name: 'bookclub-preprocessing-server'
     scrape_interval: 15s
     static_configs:
-      - targets: ['bookclub-server:8010']
+      - targets: ['bookclub-preprocessing-server:8010']
     metric_relabel_configs:
       # Keep execution timing metrics
       - source_labels: [__name__]
@@ -212,10 +212,10 @@ def test_decorated_function_emits_metrics():
     @track_timing(namespace="test")
     def sample_fn():
         return "done"
-    
+
     result = sample_fn()
     assert result == "done"
-    
+
     # Check metrics
     metrics_output = generate_latest().decode()
     assert "test_" in metrics_output
@@ -239,11 +239,11 @@ def test_health_endpoint_tracked(client):
     # Call endpoint
     response = client.get("/health")
     assert response.status_code == 200
-    
+
     # Verify metrics endpoint includes timing
     metrics_response = client.get("/metrics")
     metrics = metrics_response.text
-    
+
     # Check for health endpoint metrics
     assert "server_book_club" in metrics
     # Note: Exact metric name depends on decorator placement
@@ -289,7 +289,7 @@ class DatabaseService:
     async def fetch_user(self, user_id: int):
         # Database query
         return await db.query("SELECT * FROM users WHERE id = ?", user_id)
-    
+
     @track_timing(namespace="db")
     async def save_user(self, user: dict):
         # Database insert/update
@@ -367,7 +367,7 @@ curl http://localhost:8010/metrics | grep "my_endpoint"
 
 **Step 4:** Check Prometheus target health
 ```bash
-curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="bookclub-server")'
+curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="bookclub-preprocessing-server")'
 ```
 
 ### Workflow 2: Multiprocess Metrics Aggregation
@@ -593,15 +593,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Run execution timing tests
         run: |
           make test-executiontimings
-      
+
       - name: Verify metrics endpoint
         run: |
           make verify-metrics
-      
+
       - name: Check for high-cardinality issues
         run: |
           # Fail if too many unique metric names

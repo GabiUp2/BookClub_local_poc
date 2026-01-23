@@ -25,7 +25,7 @@ The command will prompt for confirmation before proceeding.
    - `logs/*.log` - All development logs
    - `logs/pytest_failures.log` - Test failure logs
    - `src/book_club/app/logs/*.log` - App runtime logs
-   - `src/book_club/server/logs/*.log` - Server runtime logs
+   - `src/book_club/preprocessing_server/logs/*.log` - Server runtime logs
 
 2. **Prometheus Data**
    - `observability/prometheus/data/*` - All metrics history
@@ -43,8 +43,10 @@ The command will prompt for confirmation before proceeding.
    - Collections and indexes
 
 6. **Grafana Session Data**
-   - `observability/grafana/data/grafana.db*` - User sessions
+   - `observability/grafana/data/grafana.db*` - User sessions, accounts
    - Login state, temporary data
+   - **Admin password resets to `admin/admin`** (configured in `grafana.ini`)
+   - Grafana will prompt you to change password on first login
 
 ### ❌ Configuration (Preserved)
 
@@ -151,7 +153,7 @@ $ make purge-old-data
    • All Loki log history
    • All Pushgateway metrics
    • All Qdrant vector data
-   • Grafana session data
+   • Grafana session data (password resets to admin/admin)
 
 ✅ This will keep:
    • All configuration files
@@ -184,7 +186,7 @@ Are you sure? [y/N] y
    ✅ Cleaned Qdrant data
 
 6️⃣  Cleaning Grafana session data...
-   ✅ Cleaned Grafana sessions
+   ✅ Cleaned Grafana sessions (password reset to admin/admin)
 
 7️⃣  Restarting services...
  Container prometheus  Started
@@ -235,9 +237,10 @@ uv run -m book_club.__main__
 
 ### 3. Check Grafana
 1. Open http://localhost:3000
-2. Log in (you may need to log in again after session purge)
-3. Your dashboards should still be there
-4. No old data in visualizations
+2. Log in with `admin/admin` (password was reset)
+3. Grafana will prompt you to set a new password
+4. Your dashboards should still be there (file-provisioned)
+5. No old data in visualisations
 
 ### 4. Verify Clean Metrics
 ```bash
@@ -347,6 +350,39 @@ make purge-old-data
 | `make push-tests` | Generate fresh test metrics |
 | `docker compose down -v` | Stop + remove volumes (nuclear option) |
 
+## Grafana Credentials After Purge
+
+Deleting `grafana.db*` resets Grafana to its initial state:
+
+| Item | After Purge |
+|------|-------------|
+| Admin password | Reset to `admin/admin` (from `grafana.ini`) |
+| User accounts | Deleted (only admin remains) |
+| API keys | Deleted |
+| Preferences | Reset to defaults |
+| Dashboards | **Preserved** (file-provisioned) |
+| Datasources | **Preserved** (file-provisioned) |
+
+### First Login After Purge
+
+1. Go to http://localhost:3000
+2. Log in with `admin` / `admin`
+3. Grafana prompts you to set a new password
+4. Set your preferred password
+5. Continue using Grafana normally
+
+### Why This Behaviour?
+
+The default credentials are configured in `observability/grafana/grafana.ini`:
+
+```ini
+[security]
+admin_user = admin
+admin_password = admin
+```
+
+This ensures a **predictable state** after purge while still prompting for a secure password on first use.
+
 ## Safety Features
 
 1. **Confirmation Prompt**
@@ -363,7 +399,12 @@ make purge-old-data
    - Dashboards remain intact
    - Datasources preserved
 
-4. **Service Verification**
+4. **Grafana Password Reset**
+   - Resets to known default (`admin/admin`)
+   - Prompts for new password on login
+   - No lockout risk
+
+5. **Service Verification**
    - Checks all services after restart
    - Reports health status
    - Provides access URLs

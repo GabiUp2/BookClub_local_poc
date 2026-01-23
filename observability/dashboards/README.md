@@ -161,10 +161,10 @@ Monitors the `/upload-pdf` endpoint with RED metrics (Rate, Errors, Duration) pl
 14. **Bytes from Failed Uploads** - Attempted but failed bytes
 
 **Metrics Used:**
-- `bookclub_pdf_upload_requests_total{status}` - Request counter
-- `bookclub_pdf_upload_duration_seconds{status}` - Duration histogram
-- `bookclub_pdf_upload_size_bytes{status}` - File size histogram
-- `bookclub_pdf_upload_bytes_total{status}` - Throughput counter
+- `preprocessing_server_pdf_upload_requests_total{status}` - Request counter
+- `preprocessing_server_pdf_upload_duration_seconds{status}` - Duration histogram
+- `preprocessing_server_pdf_upload_size_bytes{status}` - File size histogram
+- `preprocessing_server_pdf_upload_bytes_total{status}` - Throughput counter
 
 **Use Cases:**
 - Monitor PDF upload endpoint health
@@ -273,10 +273,10 @@ All dashboards require:
 - `{namespace}_{module}_{function}_seconds_bucket{status, le}` - Histogram (distribution)
 
 ### PDF Upload
-- `bookclub_pdf_upload_requests_total{status}` - Counter (total requests)
-- `bookclub_pdf_upload_duration_seconds{status}` - Histogram (request duration)
-- `bookclub_pdf_upload_size_bytes{status}` - Histogram (file size distribution)
-- `bookclub_pdf_upload_bytes_total{status}` - Counter (total bytes uploaded)
+- `preprocessing_server_pdf_upload_requests_total{status}` - Counter (total requests)
+- `preprocessing_server_pdf_upload_duration_seconds{status}` - Histogram (request duration)
+- `preprocessing_server_pdf_upload_size_bytes{status}` - Histogram (file size distribution)
+- `preprocessing_server_pdf_upload_bytes_total{status}` - Counter (total bytes uploaded)
 
 ---
 

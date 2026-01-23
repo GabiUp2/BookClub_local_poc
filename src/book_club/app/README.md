@@ -41,12 +41,12 @@ docker-compose up bookclub-app
 The service will:
 - Install dependencies on startup
 - Run `next dev` on port 8000
-- Connect to `bookclub-server` on port 8010
+- Connect to `bookclub-preprocessing-server` on port 8010
 
 ## Environment Variables
 
 - `NEXT_PUBLIC_API_BASE_URL`: FastAPI backend URL
-  - Docker: `http://bookclub-server:8010`
+  - Docker: `http://bookclub-preprocessing-server:8010`
   - Local: `http://localhost:8010`
 
 ## CopilotKit Integration
