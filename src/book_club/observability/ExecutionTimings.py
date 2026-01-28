@@ -3,8 +3,14 @@ from __future__ import annotations
 import time
 import functools
 import asyncio
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 from prometheus_client import REGISTRY as DEFAULT_REGISTRY, Counter, Gauge, Histogram, CONTENT_TYPE_LATEST, generate_latest
+
+# OpenTelemetry imports for trace correlation
+try:
+    from opentelemetry import trace
+except ImportError:
+    trace = None
 
 #TODO: I want it to use the same registry as the main else i would have to exposed another endpoint, which might be a good idea for metrics that are not related to the app workings but development
 REGISTRY = DEFAULT_REGISTRY
@@ -21,6 +27,26 @@ class _NoOpMetric:
     def set(self, value): pass
     def inc(self, amount=1): pass
     def observe(self, value, exemplar=None): pass
+
+def _get_trace_id() -> Optional[str]:
+    """Extract trace_id from current OTEL span context.
+    
+    Returns:
+        Trace ID as 32-character hex string, or None if no valid span context.
+    """
+    if trace is None:
+        return None
+    try:
+        span = trace.get_current_span()
+        if span is None:
+            return None
+        ctx = span.get_span_context()
+        if ctx.is_valid:
+            return format(ctx.trace_id, '032x')
+    except Exception:
+        pass
+    return None
+
 
 def _metric_names(fn: Callable, namespace: str = "server") -> Dict[str, str]:
     mod = fn.__module__.replace(".", "_")
@@ -119,9 +145,9 @@ def track_timing(namespace: str = "server", registry=DEFAULT_REGISTRY):
 
                     # Optional exemplar hook for a low-cardinality context (e.g., trace_id) if available
                     exemplar = None
-                    trace_id = kwargs.get("_trace_id", None)  # or pull from contextvars/OTEL
+                    trace_id = _get_trace_id()  # Pull from OTEL context
                     if trace_id:
-                        exemplar = {"trace_id": str(trace_id)}
+                        exemplar = {"trace_id": trace_id}
 
                     # Observe with or without exemplar (exemplars only on Histogram/Counter)
                     try:
@@ -152,9 +178,9 @@ def track_timing(namespace: str = "server", registry=DEFAULT_REGISTRY):
 
                     # Optional exemplar hook for a low-cardinality context (e.g., trace_id) if available
                     exemplar = None
-                    trace_id = kwargs.get("_trace_id", None)  # or pull from contextvars/OTEL
+                    trace_id = _get_trace_id()  # Pull from OTEL context
                     if trace_id:
-                        exemplar = {"trace_id": str(trace_id)}
+                        exemplar = {"trace_id": trace_id}
 
                     # Observe with or without exemplar (exemplars only on Histogram/Counter)
                     try:

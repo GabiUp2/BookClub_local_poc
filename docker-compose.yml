@@ -101,7 +101,7 @@ services:
     container_name: tempo
     restart: unless-stopped
     ports:
-      - "4317:4317"   # OTLP gRPC (if exposing directly)
+      # OTLP gRPC (4317) exposed via Alloy, not Tempo directly
       - "3200:3200"   # Tempo HTTP API
     volumes:
       - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yaml:ro
@@ -122,6 +122,8 @@ services:
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     ports:
       - "12345:12345"  # Alloy UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
 
   # --- Grafana (Dashboards) ---
   grafana:

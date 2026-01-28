@@ -26,11 +26,37 @@ from prometheus_client import (
     Histogram,
 )
 
+# OpenTelemetry imports for trace correlation
+try:
+    from opentelemetry import trace
+except ImportError:
+    trace = None
+
 REGISTRY = DEFAULT_REGISTRY
 
 # Metric name prefix
 _NS = "preprocessing_server"
 _SUBSYSTEM = "pdf_upload"
+
+
+def _get_trace_id() -> Optional[str]:
+    """Extract trace_id from current OTEL span context.
+    
+    Returns:
+        Trace ID as 32-character hex string, or None if no valid span context.
+    """
+    if trace is None:
+        return None
+    try:
+        span = trace.get_current_span()
+        if span is None:
+            return None
+        ctx = span.get_span_context()
+        if ctx.is_valid:
+            return format(ctx.trace_id, '032x')
+    except Exception:
+        pass
+    return None
 
 # --- Metric Definitions ---
 
