@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import PDFUpload from '../components/PDFUpload'
+import { fetchWithTracing } from '@/lib/fetchWithTracing'
 
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<string>('checking...')
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8010'
 
   useEffect(() => {
-    fetch(`${apiBaseUrl}/health`)
+    fetchWithTracing(`${apiBaseUrl}/health`)
       .then(res => res.json())
       .then(data => setApiStatus(`✓ API healthy (uptime: ${data.uptime_s}s)`))
       .catch(() => setApiStatus('✗ API unreachable'))

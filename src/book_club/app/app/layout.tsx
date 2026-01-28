@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+// Initialise OpenTelemetry tracing (client-side only)
+import '@/lib/tracing'
 import { CopilotProvider } from '@/components/CopilotProvider'
 
 export const metadata: Metadata = {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { fetchWithTracing } from '@/lib/fetchWithTracing'
 
 interface UploadState {
   status: 'idle' | 'uploading' | 'success' | 'error'
@@ -46,7 +47,7 @@ export default function PDFUpload() {
     formData.append('file', file)
 
     try {
-      const response = await fetch(`${apiBaseUrl}/upload-pdf`, {
+      const response = await fetchWithTracing(`${apiBaseUrl}/upload-pdf`, {
         method: 'POST',
         body: formData,
       })
