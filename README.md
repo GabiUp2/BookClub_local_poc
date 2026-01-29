@@ -47,14 +47,20 @@ curl localhost:8000/healthz
 - Loki shows logs from `bookclub-app` container
 - Qdrant UI/API reachable at `http://localhost:6333`
 
-## 6) Current Tasks
+## 6) Observability demo (OTEL tracing)
 
-### 1) Finish OpenTelemetry (OTEL) migration
+OTEL tracing is implemented: frontend and backend emit traces; logs and metrics correlate via `trace_id` and exemplars.
 
-- Instrument FastAPI/app with OpenTelemetry SDK.
-- Set resource attributes: `service.name`, `deployment.environment`, `git.commit`, `git.branch`.
-- Export traces via Alloy OTLP to Tempo.
-- Correlate signals: include `trace_id` in logs (Loki) and enable trace exemplars on latency metrics.
+- **Quick check**: `make demo-verify` (smoke-checks Tempo, Loki, Prometheus).
+- **Generate demo signal**: `make demo-healthy-trace-signal` then open Grafana (Tempo/Loki/Prometheus).
+- **Demo scenarios**: `make demo-frontend-latency-issue-trace-signal`, `make demo-server-chocking-trace-signal`, `make demo-qdrant-down-trace-signal`; `make demo-reset` to restore.
+
+See **[OTEL Tracing feature doc](docs/features/otel_tracing/feature.md)** for configuration, API, and runbook.
+
+## 7) Current Tasks
+
+### 1) Remaining observability
+
 - Add git commit/branch to metrics and log labels.
 - Add basic alerting: p95 latency per endpoint; error‑rate and ERROR‑log spike.
 
@@ -72,15 +78,16 @@ curl localhost:8000/healthz
 
 See ROADMAP.md for the full, granular task list grouped by area.
 
-## 7) Troubleshooting
+## 8) Troubleshooting
 
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
 - If Prometheus/Loki already exist elsewhere, **comment out** those services in `docker-compose.yml` and point Grafana at the existing ones.
 
-## 8) Documentation
+## 9) Documentation
 
 ### Observability Documentation
 
+- **[OTEL Tracing](docs/features/otel_tracing/feature.md)** - End-to-end tracing (frontend → backend), log/metric correlation, demo harness (`make demo-verify`, `make demo-healthy-trace-signal`, etc.).
 - **[Execution Timings](docs/execution_timings.md)** - Function performance tracking with `@track_timing` decorator.
   - Automatic metrics for execution time, call counts, and error rates.
   - Supports sync/async functions, Gunicorn multiprocess mode, and trace exemplars.

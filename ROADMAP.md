@@ -8,12 +8,13 @@ This file contains the granular task lists grouped by area. The README contains 
 - [x] Send function execution timings as Prometheus metrics
 - [x] Optional: send test execution time metrics to Prometheus (via Pushgateway)
 - [x] Add Tempo service and Grafana Tempo datasource
-- [ ] Enable OTEL: instrument FastAPI/app with OpenTelemetry SDK
-  - [ ] Set OTEL resource attrs: `service.name`, `deployment.environment`, `git.commit`, `git.branch`
-  - [ ] Export traces via Alloy OTLP to Tempo
-- [ ] Correlate signals:
-  - [ ] Include `trace_id` in logs (Loki) and enable trace exemplars on latency metrics
-  - [ ] Grafana Explore: pivot metrics ↔ logs ↔ traces for a single request
+- [x] Enable OTEL: instrument FastAPI/app with OpenTelemetry SDK
+  - [x] Set OTEL resource attrs: `service.name`, `deployment.environment`, `git.commit`, `git.branch`
+  - [x] Export traces via Alloy OTLP to Tempo
+- [x] Correlate signals:
+  - [x] Include `trace_id` in logs (Loki) and enable trace exemplars on latency metrics
+  - [x] Grafana Explore: pivot metrics ↔ logs ↔ traces for a single request
+  - See [OTEL Tracing feature doc](docs/features/otel_tracing/feature.md).
 - [ ] Add git commit and branch to metrics and logs labels
 - [ ] Add basic alerting:
   - [ ] p95 latency per endpoint (Prometheus)
@@ -28,9 +29,10 @@ This file contains the granular task lists grouped by area. The README contains 
   - [ ] I can see endpoint execution time distributions (p50/p95/p99), request rate, in‑flight, error rate
   - [ ] I can compare these across branches/commits and over time
 - The Observability — traces and correlations:
-  - [ ] Tempo receives traces from the app; I can view spans for a request (including DB/external calls)
-  - [ ] Metrics panels show trace exemplars; logs include `trace_id` and link to traces
-  - [ ] From a metric panel I can pivot to related logs and the corresponding trace
+  - [x] Tempo receives traces from the app; I can view spans for a request (including DB/external calls)
+  - [x] Metrics panels show trace exemplars; logs include `trace_id` and link to traces
+  - [x] From a metric panel I can pivot to related logs and the corresponding trace
+  - See [OTEL Tracing feature doc](docs/features/otel_tracing/feature.md) and `make demo-verify` / `make demo-healthy-trace-signal`.
 - The Observability — alerting and operations:
   - [ ] Alert rules exist for high error rate and high p95 latency, with a working contact point
   - [ ] Acknowledge/silence flow verified in Grafana Alerting
