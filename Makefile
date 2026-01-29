@@ -55,6 +55,10 @@ help: ## Show this help
 	@grep -E '^(demo-upload-errors|demo-upload-traffic):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
+	@blue "OTEL TRACING DEMOS"
+	@grep -E '^(demo-healthy-trace-signal|demo-frontend-latency-issue-trace-signal|demo-server-chocking-trace-signal|demo-qdrant-down-trace-signal|demo-reset|demo-verify):.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@echo ""
 	@blue "OBSERVABILITY VERIFICATION"
 	@grep -E '^(verify-observability|verify-quick|verify-logs|verify-integration):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -275,6 +279,101 @@ demo-upload-traffic: ## Generate mixed PDF upload traffic (OK=5 ERR=5 by default
 		print(f'  Errors: {err} ({100*err/total:.1f}%)') if total else None"
 	@echo ""
 	@blue "View in Grafana: http://localhost:3000/d/pdf-upload/pdf-upload-red-metrics-throughput"
+
+# -------- OTEL Tracing Demo Harness --------
+
+# Default traffic generation settings
+DEMO_SECONDS ?= 20
+DEMO_CONCURRENCY ?= 5
+
+.PHONY: demo-healthy-trace-signal demo-frontend-latency-issue-trace-signal demo-server-chocking-trace-signal demo-qdrant-down-trace-signal demo-reset demo-verify
+
+demo-healthy-trace-signal: ## Generate healthy traces (baseline for comparison)
+	@$(colour_fns)
+	@blue "OTEL Tracing Demo: Healthy baseline"
+	@echo ""
+	@$(MAKE) demo-reset
+	@blue "Generating traffic for $(DEMO_SECONDS) seconds..."
+	@$(UV) run python -m src.book_club.observability.demo.generate_traffic --seconds $(DEMO_SECONDS) --concurrency $(DEMO_CONCURRENCY)
+	@echo ""
+	@$(MAKE) _demo-hints
+
+demo-frontend-latency-issue-trace-signal: ## Demo frontend latency issue (client delay before backend call)
+	@$(colour_fns)
+	@blue "OTEL Tracing Demo: Frontend latency issue"
+	@echo ""
+	@$(MAKE) demo-reset
+	@blue "Setting frontend fault: 800ms client delay..."
+	@curl -sS -X POST http://localhost:8000/api/demo/faults \
+		-H 'Content-Type: application/json' \
+		-d '{"client_delay_ms": 800}' > /dev/null || echo "Warning: Frontend fault injection may not be available"
+	@blue "Generating traffic for $(DEMO_SECONDS) seconds..."
+	@$(UV) run python -m src.book_club.observability.demo.generate_traffic --seconds $(DEMO_SECONDS) --concurrency $(DEMO_CONCURRENCY)
+	@echo ""
+	@$(MAKE) _demo-hints
+
+demo-server-chocking-trace-signal: ## Demo backend choking (CPU burn + error rate)
+	@$(colour_fns)
+	@blue "OTEL Tracing Demo: Server choking/saturation"
+	@echo ""
+	@$(MAKE) demo-reset
+	@blue "Setting backend fault: 600ms CPU burn, 5% error rate..."
+	@curl -sS -X POST http://localhost:8010/__demo/faults \
+		-H 'Content-Type: application/json' \
+		-d '{"backend_delay_ms": 0, "cpu_burn_ms": 600, "error_rate": 0.05}' > /dev/null
+	@blue "Generating traffic for $(DEMO_SECONDS) seconds..."
+	@$(UV) run python -m src.book_club.observability.demo.generate_traffic --seconds $(DEMO_SECONDS) --concurrency $(DEMO_CONCURRENCY)
+	@echo ""
+	@$(MAKE) _demo-hints
+
+demo-qdrant-down-trace-signal: ## Demo dependency outage (Qdrant down)
+	@$(colour_fns)
+	@blue "OTEL Tracing Demo: Dependency outage (Qdrant)"
+	@echo ""
+	@$(MAKE) demo-reset
+	@blue "Stopping Qdrant container..."
+	@docker compose stop qdrant
+	@blue "Generating traffic (should fail fast)..."
+	@$(UV) run python -m src.book_club.observability.demo.generate_traffic --seconds 10 --concurrency 3 || true
+	@echo ""
+	@blue "Starting Qdrant container..."
+	@docker compose start qdrant
+	@blue "Waiting for Qdrant to be ready (5s)..."
+	@sleep 5
+	@blue "Generating recovery traffic..."
+	@$(UV) run python -m src.book_club.observability.demo.generate_traffic --seconds 10 --concurrency 3
+	@echo ""
+	@$(MAKE) _demo-hints
+
+demo-reset: ## Reset all demo fault injection to baseline
+	@$(colour_fns)
+	@blue "Resetting demo faults to baseline..."
+	@curl -sS -X POST http://localhost:8010/__demo/reset > /dev/null 2>&1 || true
+	@curl -sS -X POST http://localhost:8000/api/demo/reset > /dev/null 2>&1 || true
+	@docker compose start qdrant > /dev/null 2>&1 || true
+	@green "Demo faults reset"
+
+demo-verify: ## Verify OTEL signals are flowing (run before presenting)
+	@$(colour_fns)
+	@blue "Verifying OTEL signals..."
+	@echo ""
+	@$(UV) run python -m src.book_club.observability.demo.verify_signals
+
+_demo-hints:
+	@$(colour_fns)
+	@echo ""
+	@green "Demo complete! View results in Grafana:"
+	@echo ""
+	@echo "  Grafana:    http://localhost:3000"
+	@echo "  Tempo:      http://localhost:3000/explore (select Tempo datasource)"
+	@echo "  Loki:       http://localhost:3000/explore (select Loki datasource)"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo ""
+	@blue "Explore pivots:"
+	@echo "  - Metrics: click exemplar dot -> jump to trace"
+	@echo "  - Logs: filter by service, click trace_id -> jump to trace"
+	@echo "  - Tempo: search by service.name=bookclub-preprocessing-server"
+	@echo ""
 
 # -------- Docker Compose v2 (installer) --------
 # To override the version at invocation time: make compose-install COMPOSE_VERSION=v2.30.3
