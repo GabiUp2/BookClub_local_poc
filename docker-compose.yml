@@ -126,9 +126,9 @@ services:
       - "4318:4318"    # OTLP HTTP
 
   # --- Grafana (Dashboards) ---
-  # Pinned to 11.x: 12.x fails datasource provisioning with uid ("data source not found")
+  # Dashboards use default datasource (datasource: null) so no uid in provisioning; works with 12.x
   grafana:
-    image: grafana/grafana:11.3.0
+    image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     depends_on:

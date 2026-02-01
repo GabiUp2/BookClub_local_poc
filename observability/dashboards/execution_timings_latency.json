@@ -23,10 +23,7 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -131,7 +128,11 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": ["mean", "lastNotNull", "max"],
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -143,10 +144,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "histogram_quantile(0.50, sum(rate({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le, __name__))",
           "legendFormat": "{{__name__}} - p50",
@@ -154,10 +152,7 @@
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum(rate({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le, __name__))",
           "hide": false,
@@ -166,10 +161,7 @@
           "refId": "B"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum(rate({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le, __name__))",
           "hide": false,
@@ -182,10 +174,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -227,7 +216,9 @@
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": ""
         },
         "textMode": "auto"
@@ -235,10 +226,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum(rate({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P95 Latency",
@@ -250,10 +238,7 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -295,7 +280,9 @@
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": ""
         },
         "textMode": "auto"
@@ -303,10 +290,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum(rate({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le))",
           "legendFormat": "P99 Latency",
@@ -318,10 +302,7 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -363,7 +344,9 @@
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": ""
         },
         "textMode": "auto"
@@ -371,10 +354,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "rate({__name__=~\"$namespace.*_seconds_sum\", status=\"ok\"}[$__rate_interval]) / rate({__name__=~\"$namespace.*_seconds_count\", status=\"ok\"}[$__rate_interval])",
           "legendFormat": "Average Duration",
@@ -386,10 +366,7 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -447,10 +424,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "sum(increase({__name__=~\"$namespace.*_seconds_bucket\", status=\"ok\"}[$__rate_interval])) by (le)",
           "format": "heatmap",
@@ -463,10 +437,7 @@
       "type": "heatmap"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -525,7 +496,11 @@
       "id": 6,
       "options": {
         "legend": {
-          "calcs": ["mean", "lastNotNull", "max"],
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -537,10 +512,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "{__name__=~\"$namespace.*_seconds\", status=\"ok\", __name__!~\".*bucket|.*sum|.*count\"}",
           "legendFormat": "{{__name__}}",
@@ -555,7 +527,11 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["execution-timings", "latency", "performance"],
+  "tags": [
+    "execution-timings",
+    "latency",
+    "performance"
+  ],
   "templating": {
     "list": [
       {

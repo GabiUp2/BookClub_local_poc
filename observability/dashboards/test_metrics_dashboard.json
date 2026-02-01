@@ -4,8 +4,8 @@
       {
         "builtIn": 1,
         "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
         "enable": true,
         "hide": true,
@@ -31,10 +31,7 @@
   "links": [],
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -118,10 +115,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"})",
           "legendFormat": "{{test_name}}",
@@ -133,10 +127,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -189,10 +180,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "max(test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "Slowest Test",
@@ -204,10 +192,7 @@
       "type": "gauge"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -254,10 +239,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "count(test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "Total Tests",
@@ -269,10 +251,7 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -351,10 +330,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "sum by (file) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{file}}",
@@ -366,10 +342,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -421,10 +394,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "exemplar": false,
           "expr": "topk(10, (max by (test_name) (last_over_time(test_duration_seconds{job=~\"$job\"}[24h]))) * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
@@ -437,10 +407,7 @@
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -519,10 +486,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "count by (type) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{type}}",
@@ -534,10 +498,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -616,10 +577,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "expr": "count by (instance) (test_duration_seconds{job=~\"$job\"} * on (job, branch) group_left(commit) max by (job, branch, commit) (build_info{job=~\"$job\", branch=~\"$branch\", commit=~\"$commit\"}))",
           "legendFormat": "{{instance}}",
@@ -631,10 +589,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": null,
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -705,10 +660,7 @@
       "pluginVersion": "12.2.0",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
+          "datasource": null,
           "editorMode": "code",
           "exemplar": false,
           "expr": "test_duration_seconds{job=~\"$job\"} * on (job, instance, branch) group_left(commit) build_info{job=~\"$job\", branch=~\"$branch\", instance=~\"$instance\", commit=~\"$commit\"}",
