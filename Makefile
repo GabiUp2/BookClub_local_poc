@@ -529,6 +529,15 @@ open-observability-chrome: ## Open observability dashboards in Google Chrome
 	  Start-Process -FilePath $$chrome -ArgumentList ($$urls | ForEach-Object { "--new-tab", $$_ });' >/dev/null 2>&1
 	@printf 'Requested Google Chrome to open Grafana, Prometheus, Loki, and Pushgateway.\n'
 
+grafana-reset: ## Reset Grafana DB so provisioned datasources (with stable UIDs) are created cleanly
+	@$(colour_fns)
+	@blue "Resetting Grafana data (fixes 'Datasource provisioning error: data source not found')..."
+	@docker compose stop grafana 2>/dev/null || true
+	@rm -rf observability/grafana/data/*
+	@green "Grafana data cleared."
+	@docker compose up -d grafana
+	@blue "Grafana starting; wait a few seconds then check http://localhost:3000"
+
 purge-old-data: ## Clean all observability data (logs, metrics, traces) but keep configs/dashboards
 	@$(colour_fns)
 	@blue "Purging old observability data..."

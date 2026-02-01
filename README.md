@@ -124,6 +124,24 @@ make test-cleanup-behavior
   - Cards generated per session
   - Q&A latency (if implemented)
 
+# Feature backlog:
+## Vector Databases to consider:
+* PGVector: Open-source vector similarity search for PostgreSQL
+* sqlite-vec: Open-source vector similarity search for SQLite
+* LanceDB: Local-first, simple setup, small–medium scale
+* Weaviate: Full-featured, GraphQL API, complex schema
+* QDrant
+
+## Retrieval performance augementation
+* Hierarchical navigable small world - https://en.wikipedia.org/wiki/Hierarchical_navigable_small_world
+* Inverted File Flat Vector Indexes - https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/understand-inverted-file-flat-vector-indexes.html
+* Locality-sensitive hashing - https://en.wikipedia.org/wiki/Locality-sensitive_hashing
+* Precision vs Recall measures - https://en.wikipedia.org/wiki/Precision_and_recall
+
+## Chunking
+* Test overlaps between chunks, assume local optimum at ~20%
+
+
 # Possible confusions in code:
 ## interchangibility of term "server" and "preprocessing server".
 The later term was introduced later in development when there was the need to distnguish one server from another server, already then there were more than 2k+ uses of term server in codebase and i just didnt had heart to go through each one of them. I've made it so the tests would run and make files target were clear, then left it there.
@@ -169,13 +187,13 @@ I think it's because the metrics are being collected by the server and by the gu
 
 ## Reset password in Grafana
 
-To reset a password for Grafana admin - once you've set one yourself - you need to get into grafana's docker shell via 'docker exec -it grafana sh' and use the following command `grafana-cli admin reset-admin-password '<new-password>'`
+To reset a password for Grafana admin - once you've set one yourself - you need to get into grafana's docker shell via 'docker exec -it grafana sh' and use the following command `grafana cli admin reset-admin-password '<new-password>'`
 
 You can initialise the grafana with a set up password by providing a env variable of `GF_SECURITY_ADMIN_PASSWORD` but this will not change the set passwords.
 
 ## The dependency graph in UV
 
-UV as a dependency tree display option for project `uv tree` similar to `poetry show --tree` or `pipenv graph`. THats nice. Using pip you had to install additional dependency `pipdeptree` which kinda was against the point.
+UV as a dependency tree display option for project `uv tree` similar to `poetry show --tree` or `pipenv graph`. Thats nice. Using pip you had to install additional dependency `pipdeptree` which kinda was against the point.
 Also same for the npm it has `npm ls` but be cautious it has the `--depth` parameter to limit the frontend depndencies. Wow, frontend really has a problem.
 For Rust its `cargo tree`.
 For Ubuntu its external, not installed by default, but official package `apt-rdepends`.
