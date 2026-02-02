@@ -6,3 +6,9 @@ prometheus-client
 uvicorn[standard]
 gunicorn
 python-multipart
+# OpenTelemetry (must match server_main.py / gunicorn post_fork imports)
+opentelemetry-sdk==1.38.0
+opentelemetry-exporter-otlp-proto-http==1.38.0
+opentelemetry-instrumentation-fastapi==0.59b0
+opentelemetry-instrumentation-requests==0.59b0
+opentelemetry-instrumentation-logging==0.59b0

@@ -48,9 +48,10 @@ except ImportError:
                 return decorator
 
         ingest_metrics = _NoOpIngestMetrics()
-        
+
         def git_commit_and_branch():
             return {"commit": "unknown", "short": "unknown", "ref": "unknown"}
+
 
 logger = logging.getLogger(__name__)
 
@@ -156,11 +157,15 @@ def _init_otel(
 ):
     """Initialise OpenTelemetry tracing with resource attributes, exporter, and instrumentors."""
     # Check if OTEL is enabled (default: enabled in local/dev)
-    enable_otel = os.getenv("ENABLE_OTEL_TRACING", "true").lower() in ("true", "1", "yes")
+    enable_otel = os.getenv("ENABLE_OTEL_TRACING", "true").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     if not enable_otel:
         logger.info("OpenTelemetry tracing disabled via ENABLE_OTEL_TRACING")
         return
-    
+
     try:
         # Get git metadata (best-effort, safe fallbacks)
         git_info = git_commit_and_branch()
@@ -170,45 +175,53 @@ def _init_otel(
         logger.warning(f"Failed to get git metadata for OTEL: {e}")
         git_commit = "unknown"
         git_branch = "unknown"
-    
+
     # Build resource attributes
     service_name = os.getenv("OTEL_SERVICE_NAME", app_name)
     deployment_env = os.getenv("APP_ENV", os.getenv("DEPLOYMENT_ENVIRONMENT", "local"))
-    
-    resource = Resource.create({
-        SERVICE_NAME: service_name,
-        DEPLOYMENT_ENVIRONMENT: deployment_env,
-        "service.version": app_version,
-        "git.commit": git_commit,
-        "git.branch": git_branch,
-    })
-    
+
+    resource = Resource.create(
+        {
+            SERVICE_NAME: service_name,
+            DEPLOYMENT_ENVIRONMENT: deployment_env,
+            "service.version": app_version,
+            "git.commit": git_commit,
+            "git.branch": git_branch,
+        }
+    )
+
     # Configure OTLP exporter
-    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4318")
-    # Ensure endpoint doesn't have trailing slash
-    otlp_endpoint = otlp_endpoint.rstrip("/")
-    
-    exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
-    
+    # OTEL_EXPORTER_OTLP_ENDPOINT is the base URL; append /v1/traces for HTTP trace export
+    otlp_base = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4318").rstrip(
+        "/"
+    )
+    otlp_traces_endpoint = f"{otlp_base}/v1/traces"
+
+    exporter = OTLPSpanExporter(endpoint=otlp_traces_endpoint)
+
     # Set up tracer provider with batch processor
     provider = TracerProvider(resource=resource)
     processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
-    
+
     # Enable auto-instrumentation
     FastAPIInstrumentor().instrument()
     RequestsInstrumentor().instrument()
-    
+
     # Enable logging instrumentation for trace_id/span_id injection
-    enable_otel_logs = os.getenv("ENABLE_OTEL_LOGS", "true").lower() in ("true", "1", "yes")
+    enable_otel_logs = os.getenv("ENABLE_OTEL_LOGS", "true").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     if enable_otel_logs:
         LoggingInstrumentor().instrument(set_logging_format=True)
         logger.info("OpenTelemetry logging instrumentation enabled")
-    
+
     logger.info(
         f"OpenTelemetry tracing initialised: service={service_name}, "
-        f"env={deployment_env}, endpoint={otlp_endpoint}"
+        f"env={deployment_env}, endpoint={otlp_traces_endpoint}"
     )
 
 
@@ -219,7 +232,9 @@ async def lifespan(app: fastapi.FastAPI):
     app.state.app_env = os.getenv("APP_ENV", "local")
 
     _clear_multiproc_dir()
-    _init_otel()  # Initialise OpenTelemetry tracing
+    # OTEL initialised in Gunicorn post_fork when using gunicorn.conf.py; else here (e.g. uvicorn only)
+    if os.environ.get("OTEL_INIT_IN_POST_FORK") != "1":
+        _init_otel()
     _register_mark_dead()  # Behaviour i want is for every worker to mark itself as dead when the server is shutting down.
 
     try:
@@ -254,26 +269,29 @@ async def demo_fault_injection_middleware(request: fastapi.Request, call_next):
     app_env = os.getenv("APP_ENV", "local")
     if app_env != "local" or not any(_demo_config.values()):
         return await call_next(request)
-    
+
     # Skip fault injection for demo endpoints themselves
     if request.url.path.startswith("/__demo/"):
         return await call_next(request)
-    
+
     # Apply delay
     if _demo_config["backend_delay_ms"] > 0:
         await asyncio.sleep(_demo_config["backend_delay_ms"] / 1000.0)
-    
+
     # Apply CPU burn (blocking, so use sync sleep in a thread)
     if _demo_config["cpu_burn_ms"] > 0:
         import threading
+
         burn_end = time.time() + (_demo_config["cpu_burn_ms"] / 1000.0)
+
         def burn_cpu():
             while time.time() < burn_end:
                 pass
+
         burn_thread = threading.Thread(target=burn_cpu)
         burn_thread.start()
         burn_thread.join()
-    
+
     # Apply error rate (probabilistic)
     if _demo_config["error_rate"] > 0 and random.random() < _demo_config["error_rate"]:
         # Mark span as error
@@ -283,9 +301,12 @@ async def demo_fault_injection_middleware(request: fastapi.Request, call_next):
                 span.set_status(Status(StatusCode.ERROR, "Demo fault injection"))
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail="Demo fault injection: probabilistic error")
-    
+        raise HTTPException(
+            status_code=500, detail="Demo fault injection: probabilistic error"
+        )
+
     return await call_next(request)
+
 
 # ----- Metadata -----
 
@@ -344,19 +365,23 @@ async def anki_export() -> dict:
 @server.post("/__demo/faults", tags=["demo"], include_in_schema=False)
 async def set_demo_faults(config: dict):
     """Set demo fault injection configuration.
-    
+
     Only available when APP_ENV=local.
     Config keys: backend_delay_ms, cpu_burn_ms, error_rate (0.0-1.0)
     """
     app_env = os.getenv("APP_ENV", "local")
     if app_env != "local":
-        raise HTTPException(status_code=403, detail="Demo endpoints only available in local environment")
-    
-    _demo_config.update({
-        "backend_delay_ms": config.get("backend_delay_ms", 0),
-        "cpu_burn_ms": config.get("cpu_burn_ms", 0),
-        "error_rate": config.get("error_rate", 0.0),
-    })
+        raise HTTPException(
+            status_code=403, detail="Demo endpoints only available in local environment"
+        )
+
+    _demo_config.update(
+        {
+            "backend_delay_ms": config.get("backend_delay_ms", 0),
+            "cpu_burn_ms": config.get("cpu_burn_ms", 0),
+            "error_rate": config.get("error_rate", 0.0),
+        }
+    )
     return {"status": "ok", "config": _demo_config}
 
 
@@ -365,8 +390,10 @@ async def reset_demo_faults():
     """Reset demo fault injection to baseline (no faults)."""
     app_env = os.getenv("APP_ENV", "local")
     if app_env != "local":
-        raise HTTPException(status_code=403, detail="Demo endpoints only available in local environment")
-    
+        raise HTTPException(
+            status_code=403, detail="Demo endpoints only available in local environment"
+        )
+
     _demo_config.update({"backend_delay_ms": 0, "cpu_burn_ms": 0, "error_rate": 0.0})
     return {"status": "ok", "config": _demo_config}
 
@@ -394,26 +421,26 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
         HTTPException: If the file is not a PDF or exceeds size limit.
     """
     import time as _time
-    
+
     tracer = trace.get_tracer(__name__)
     start_time = _time.perf_counter()
     size_bytes = 0
 
     try:
         original_filename = file.filename or "unknown.pdf"
-        
+
         # Validate content type and filename
         with tracer.start_as_current_span("pdf.validate") as span:
             span.set_attribute("file.filename", original_filename)
             span.set_attribute("file.content_type", file.content_type or "unknown")
-            
+
             if file.content_type not in ALLOWED_CONTENT_TYPES:
                 span.set_status(Status(StatusCode.ERROR, "Invalid content type"))
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid file type: {file.content_type}. Only PDF files are allowed.",
                 )
-            
+
             if not original_filename.lower().endswith(".pdf"):
                 span.set_status(Status(StatusCode.ERROR, "Invalid file extension"))
                 raise HTTPException(
@@ -500,11 +527,12 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
         exemplar = None
         try:
             from opentelemetry import trace as otel_trace
+
             span = otel_trace.get_current_span()
             if span:
                 ctx = span.get_span_context()
                 if ctx.is_valid:
-                    exemplar = {"trace_id": format(ctx.trace_id, '032x')}
+                    exemplar = {"trace_id": format(ctx.trace_id, "032x")}
         except Exception:
             pass
         ingest_metrics.observe_upload(
@@ -526,15 +554,19 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
         exemplar = None
         try:
             from opentelemetry import trace as otel_trace
+
             span = otel_trace.get_current_span()
             if span:
                 ctx = span.get_span_context()
                 if ctx.is_valid:
-                    exemplar = {"trace_id": format(ctx.trace_id, '032x')}
+                    exemplar = {"trace_id": format(ctx.trace_id, "032x")}
         except Exception:
             pass
         ingest_metrics.observe_upload(
-            size_bytes=size_bytes, status="error", duration_s=duration_s, exemplar=exemplar
+            size_bytes=size_bytes,
+            status="error",
+            duration_s=duration_s,
+            exemplar=exemplar,
         )
         raise
 
@@ -545,15 +577,19 @@ async def upload_pdf(file: UploadFile = File(...)) -> PDFUploadResponse:
         exemplar = None
         try:
             from opentelemetry import trace as otel_trace
+
             span = otel_trace.get_current_span()
             if span:
                 ctx = span.get_span_context()
                 if ctx.is_valid:
-                    exemplar = {"trace_id": format(ctx.trace_id, '032x')}
+                    exemplar = {"trace_id": format(ctx.trace_id, "032x")}
         except Exception:
             pass
         ingest_metrics.observe_upload(
-            size_bytes=size_bytes, status="error", duration_s=duration_s, exemplar=exemplar
+            size_bytes=size_bytes,
+            status="error",
+            duration_s=duration_s,
+            exemplar=exemplar,
         )
         logger.exception(f"Unexpected error during PDF upload: {e}")
         raise HTTPException(

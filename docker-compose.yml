@@ -44,16 +44,20 @@ services:
     restart: unless-stopped
     depends_on:
       - qdrant
+      - alloy
     env_file:
       - ./src/book_club/preprocessing_server/.env
     environment:
       # Provide your own model keys in .env (not committed)
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      # OTEL: ensure traces reach Alloy -> Tempo (override .env if wrong)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      ENABLE_OTEL_TRACING: "true"
       # prometheus_client requires lowercase env var for multiprocess mode
       prometheus_multiproc_dir: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir} # needs to be in small letters?
       PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir} # TODO: i'm not sure do i need to keep this in both versions?
-      LOGS_FORMAT: ${LOGS_FORMAT:-%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(message)s}
+      LOGS_FORMAT: ${LOGS_FORMAT:-%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(otelTraceID)s - %(otelSpanID)s - %(message)s}
       LOGS_LEVEL: ${LOGS_LEVEL:-INFO}
     ports:
       - "8010:8010"
@@ -134,6 +138,7 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
     ports:
       - "3000:3000"
     environment:

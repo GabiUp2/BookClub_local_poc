@@ -82,6 +82,7 @@ See ROADMAP.md for the full, granular task list grouped by area.
 
 - If models are local (Ollama), ensure `OLLAMA_HOST` is reachable from container (use `host.docker.internal` on mac/win, or host IP on linux).
 - If Prometheus/Loki already exist elsewhere, **comment out** those services in `docker-compose.yml` and point Grafana at the existing ones.
+- **No traces in Grafana / TraceQL "0 series"**: Rebuild and recreate the backend so OTEL runs in each Gunicorn worker (`docker compose build bookclub-preprocessing-server && docker compose up -d --force-recreate bookclub-preprocessing-server`), then run `make demo-healthy-trace-signal` and wait 15s. In Grafana Explore (Tempo) use the **Search** tab and filter by tag `service.name` = `bookclub-preprocessing-server`. See [OTEL Tracing feature doc](docs/features/otel_tracing/feature.md) for full runbook.
 
 ## 9) Documentation
 

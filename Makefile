@@ -286,7 +286,7 @@ demo-upload-traffic: ## Generate mixed PDF upload traffic (OK=5 ERR=5 by default
 DEMO_SECONDS ?= 20
 DEMO_CONCURRENCY ?= 5
 
-.PHONY: demo-healthy-trace-signal demo-frontend-latency-issue-trace-signal demo-server-chocking-trace-signal demo-qdrant-down-trace-signal demo-reset demo-verify
+.PHONY: demo-healthy-trace-signal demo-frontend-latency-issue-trace-signal demo-server-chocking-trace-signal demo-qdrant-down-trace-signal demo-reset demo-verify demo-verify-with-traffic
 
 demo-healthy-trace-signal: ## Generate healthy traces (baseline for comparison)
 	@$(colour_fns)
@@ -358,6 +358,13 @@ demo-verify: ## Verify OTEL signals are flowing (run before presenting)
 	@blue "Verifying OTEL signals..."
 	@echo ""
 	@$(UV) run python -m src.book_club.observability.demo.verify_signals
+
+demo-verify-with-traffic: ## Generate traffic, wait for OTLP flush, then verify (one-shot)
+	@$(colour_fns)
+	@$(MAKE) demo-healthy-trace-signal
+	@blue "Waiting 15s for OTLP batch flush and Tempo ingester..."
+	@sleep 15
+	@$(MAKE) demo-verify
 
 _demo-hints:
 	@$(colour_fns)

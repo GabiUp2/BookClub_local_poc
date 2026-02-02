@@ -66,33 +66,66 @@ This feature adds **end-to-end OpenTelemetry tracing** to the BookClub Local POC
 
 ### Demo endpoints (backend, `APP_ENV=local` only)
 
-- **POST `/__demo/faults`**  
-  Body: `{ "backend_delay_ms": 0, "cpu_burn_ms": 0, "error_rate": 0.0 }`  
+- **POST `/__demo/faults`**
+  Body: `{ "backend_delay_ms": 0, "cpu_burn_ms": 0, "error_rate": 0.0 }`
   Sets in-memory fault config; applied by middleware (delay, CPU burn, probabilistic 500).
 
-- **POST `/__demo/reset`**  
+- **POST `/__demo/reset`**
   Resets fault config to baseline (no delay, no burn, 0% error rate).
 
 ### Demo endpoints (frontend, development only)
 
-- **POST `/api/demo/faults`**  
-  Body: `{ "client_delay_ms": 800 }`  
+- **POST `/api/demo/faults`**
+  Body: `{ "client_delay_ms": 800 }`
   Sets client-side delay applied before backend fetch (demo frontend-latency scenario).
 
-- **POST `/api/demo/reset`**  
+- **POST `/api/demo/reset`**
   Resets client delay to 0.
 
 ### OTLP proxy (frontend)
 
-- **POST `/api/otel`**  
+- **POST `/api/otel`**
   Proxies OTLP/HTTP trace export from browser to Alloy; no auth (internal use).
 
 ## Observability notes
 
-- **Traces**: Tempo; search by `service.name` (e.g. `bookclub-preprocessing-server`, `bookclub-app`).
+- **Traces**: Tempo; in Explore (Tempo) use TraceQL with **quoted** string values, e.g. `{ resource.service.name = "bookclub-preprocessing-server" }` or `{ resource.service.name = "bookclub-app" }`.
 - **Logs**: Loki; log lines include `trace_id` / `span_id` when logging instrumentation is enabled; use Explore to filter and jump to Tempo.
 - **Metrics**: Prometheus; histograms `preprocessing_server_pdf_upload_duration_seconds`, execution-timing histograms from `@track_timing`; enable exemplars in panels and click dot to open trace.
 - **Dashboards**: Use existing execution timings and PDF upload dashboards; exemplars and trace links appear where configured. A dedicated "Demo Overview" dashboard is optional (see scaffold).
+
+## Troubleshooting: no traces in Grafana / "0 series" in TraceQL
+
+**"0 series returned" in TraceQL (selector query):** In Grafana Explore → Tempo → TraceQL tab, set **Run type** to **Trace** (not Metrics). A selector like `{ resource.service.name = "bookclub-preprocessing-server" }` with Run type **Metrics** returns metric series; with no metrics you see "0 series". With Run type **Trace** the same query returns trace IDs.
+
+**Note:** `make demo-verify` / `demo-verify-with-traffic` can be all green even when Tempo has **no** traces (it only checks that Tempo is reachable). To confirm traces exist, use the Search tab or the curl below.
+
+**If TraceQL returns "0 series" (with Run type Trace) or Search returns no traces:**
+
+1. **Rebuild and recreate the backend** so OTEL runs in each Gunicorn worker (post_fork fix):
+   ```bash
+   docker compose build bookclub-preprocessing-server
+   docker compose up -d --force-recreate bookclub-preprocessing-server
+   ```
+2. **Generate traffic** and wait for OTLP flush:
+   ```bash
+   make demo-healthy-trace-signal
+   sleep 15
+   ```
+3. **In Grafana Explore (Tempo)** use the **Search** tab (not TraceQL): add a tag filter `service.name` = `bookclub-preprocessing-server` and run the search. You should see a list of traces. The TraceQL tab returns trace spans; "0 series" often means no data in Tempo yet.
+4. **Check from the host** whether Tempo has any traces:
+   ```bash
+   curl -s "http://localhost:3200/api/search?tags=service.name%3Dbookclub-preprocessing-server&limit=5&start=$(($(date +%s) - 600))&end=$(date +%s)" | jq .traces
+   ```
+   If `traces` is `[]`, the pipeline is not delivering; ensure step 1 and 2 are done.
+
+**Other checks:**
+
+5. **Gunicorn fork-safe**: The backend uses `gunicorn.conf.py` with a `post_fork` hook so OTEL is initialised in each worker after fork. Without this, traces may not be exported. Ensure the container runs Gunicorn with `-c gunicorn.conf.py`.
+6. **Backend OTLP endpoint**: Backend must send traces to Alloy. If you use a `.env` copied from `.env.example`, ensure `OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318` (not `grafana-agent`). Restart the preprocessing server after changing.
+7. **Where to look**: Grafana → **Explore** → datasource **Tempo**. Use the **Search** tab and filter by tag `service.name` = `bookclub-preprocessing-server`; or use the TraceQL tab with `{ resource.service.name = "bookclub-preprocessing-server" }` and ensure the query type is **trace** (not metrics). Use a recent time range (e.g. Last 15 minutes).
+8. **Generate traffic**: Traces only appear when requests hit the app. Run `make demo-healthy-trace-signal` to generate traffic, then query Tempo.
+9. **Verify pipeline**: `make demo-verify` checks that Tempo returns traces and logs contain `trace_id`; fix any failing check first.
 
 ## Operational notes
 

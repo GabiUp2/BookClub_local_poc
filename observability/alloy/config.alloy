@@ -35,9 +35,9 @@ local.file_match "app_logs" {
   sync_period = "1s"
 }
 
-// Targeting server logs as a target
+// Targeting server logs (mount: preprocessing_server/logs -> /preprocessing_server/)
 local.file_match "server_logs" {
-  path_targets = [{"__path__" = "/server_logs/*.log"}]
+  path_targets = [{"__path__" = "/preprocessing_server/*.log", "job" = "bookclub-preprocessing-server"}]
   sync_period = "1s"
 }
 
