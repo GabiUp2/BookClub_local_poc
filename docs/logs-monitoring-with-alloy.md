@@ -12,8 +12,8 @@ This project uses **Grafana Alloy** as a universal log collector that ingests lo
 │  • logs/main.log (development, structured format)              │
 │  • logs/pytest_failures.log (test failures, JSON format)       │
 │  • src/book_club/app/logs/*.log (app runtime logs)            │
-│  • src/book_club/server/logs/*.log (server runtime logs)      │
-│  • Docker container logs (via /var/lib/docker/containers)     │
+│  • src/book_club/preprocessing_server/logs/*.log (server logs) │
+│  • Docker container logs (loki.source.docker + socket)        │
 └──────────────────────┬──────────────────────────────────────────┘
                        │
                        ▼
@@ -92,21 +92,23 @@ This project uses **Grafana Alloy** as a universal log collector that ingests lo
 - Parsed via `loki.process.add_new_label`
 - Standard structured log parsing
 
-### 4. **Server Runtime Logs** (src/book_club/server/logs/*.log)
+### 4. **Server Runtime Logs** (file + stdout)
 
-**Format:** Structured (similar to development logs)
+**Paths:** `src/book_club/preprocessing_server/logs/*.log` (file) and Docker stdout (preferred in Grafana).
+
+**Format:** Structured (similar to development logs). The server logs to both a file and stdout; Alloy collects stdout via `loki.source.docker`, which adds a `service_name` label from the container name.
 
 **Alloy Processing:**
-- Parsed via `loki.process.add_new_label`
-- Standard structured log parsing
+- File: `loki.source.file` + `loki.process.add_new_label` when the log file exists.
+- Stdout: `discovery.docker` + `loki.source.docker` with `service_name` from container name (e.g. `bookclub-preprocessing-server`).
 
 ### 5. **Docker Container Logs**
 
-**Format:** JSON (Docker's native format)
+**Format:** JSON (Docker's native format). Collected via `loki.source.docker` using the Docker socket so each stream gets a `service_name` label (container name without leading slash).
 
 **Alloy Processing:**
-- Direct ingestion from `/var/lib/docker/containers/*/*-json.log`
-- Minimal processing, forwarded directly to Loki
+- `discovery.docker` discovers containers; `discovery.relabel` exports a rule to set `service_name` from `__meta_docker_container_name`.
+- `loki.source.docker` tails container logs and applies the relabel rules; forwards to Loki.
 
 ## Alloy Configuration
 
@@ -192,7 +194,8 @@ alloy:
     - /var/log:/var/log:ro
     - ./logs:/development_logs/                    # Host: logs/ → Container: /development_logs/
     - ./src/book_club/app/logs:/app_logs/          # App runtime logs
-    - ./src/book_club/server/logs:/server_logs/    # Server runtime logs
+    - /var/run/docker.sock:/var/run/docker.sock:ro # For loki.source.docker (container names)
+    - ./src/book_club/preprocessing_server/logs:/preprocessing_server/
 ```
 
 **Important:** 
@@ -209,32 +212,38 @@ alloy:
 
 ### Example Queries (LogQL)
 
-#### 1. All pytest failures
+#### 1. Preprocessing server logs (Docker stdout)
+```logql
+{job="docker", service_name="bookclub-preprocessing-server"}
+```
+Use this in Explore to see logs from the FastAPI preprocessing server. The server logs to stdout; Alloy collects them via `loki.source.docker` and labels by container name.
+
+#### 2. All pytest failures
 ```logql
 {source="pytest", event="test_failure"}
 ```
 
-#### 2. Failed tests only
+#### 3. Failed tests only
 ```logql
 {source="pytest", outcome="failed"}
 ```
 
-#### 3. Errors from a specific file
+#### 4. Errors from a specific file
 ```logql
 {filename="server_main.py", level="ERROR"}
 ```
 
-#### 4. Filter by message content
+#### 5. Filter by message content
 ```logql
 {source="pytest"} |= "AssertionError"
 ```
 
-#### 5. Count failures over time
+#### 6. Count failures over time
 ```logql
 sum(count_over_time({source="pytest", outcome="failed"}[5m]))
 ```
 
-#### 6. Extract JSON fields
+#### 7. Extract JSON fields
 ```logql
 {source="pytest"} | json | short_error != ""
 ```

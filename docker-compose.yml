@@ -118,6 +118,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
       - ./logs:/development_logs/ # general development logs

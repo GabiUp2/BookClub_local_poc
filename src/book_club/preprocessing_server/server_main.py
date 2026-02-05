@@ -146,10 +146,14 @@ def _configure_logging() -> None:
             "LOGS_FORMAT",
             "%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(funcName)s - %(process)d - %(thread)d - %(threadName)s - %(otelTraceID)s - %(otelSpanID)s - %(message)s",
         )
-        file_handler = logging.FileHandler(f"{log_dir}/server_main.log")
         formatter = logging.Formatter(log_format)
+        file_handler = logging.FileHandler(f"{log_dir}/server_main.log")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+        # Also log to stdout so Docker captures logs and Alloy can ship to Loki
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
 
 
 def _init_otel(

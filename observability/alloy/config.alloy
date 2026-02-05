@@ -6,15 +6,26 @@ loki.write "local" {
   }
 }
 
-// Docker container logs scraping
-loki.source.file "docker_logs" {
-  targets = [
-    {
-      __path__ = "/var/lib/docker/containers/*/*-json.log",
-      job      = "docker",
-    },
-  ]
-  forward_to = [loki.write.local.receiver]
+// Docker container logs via loki.source.docker (adds container name for filtering in Grafana)
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_service_name" {
+  targets = []
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "service_name"
+  }
+}
+
+loki.source.docker "containers" {
+  host           = "unix:///var/run/docker.sock"
+  targets        = discovery.docker.containers.targets
+  labels         = { job = "docker" }
+  relabel_rules  = discovery.relabel.docker_service_name.rules
+  forward_to     = [loki.write.local.receiver]
 }
 
 // Targeting pytest failure logs (JSON format) from logs/pytest_failures.log

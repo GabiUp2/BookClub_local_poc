@@ -52,7 +52,7 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@blue "DEMO & TRAFFIC GENERATION"
-	@grep -E '^(demo-upload-errors|demo-upload-traffic):.*?## ' $(MAKEFILE_LIST) | \
+	@grep -E '^(demo-upload-errors|demo-upload-traffic|clean-pdfs):.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@blue "OTEL TRACING DEMOS"
@@ -225,6 +225,9 @@ test-cleanup-behavior: ## Test all PROM_CLEANUP options (none, before, after, bo
 
 # -------- Demo & Traffic Generation --------
 
+# Host path for dropped PDFs (must match docker-compose volume ./data/pdfs:/pdfs)
+PDF_STORAGE_HOST_DIR ?= data/pdfs
+
 # Default counts for demo traffic (can override: make demo-upload-traffic OK=20 ERR=5)
 OK ?= 5
 ERR ?= 5
@@ -279,6 +282,15 @@ demo-upload-traffic: ## Generate mixed PDF upload traffic (OK=5 ERR=5 by default
 		print(f'  Errors: {err} ({100*err/total:.1f}%)') if total else None"
 	@echo ""
 	@blue "View in Grafana: http://localhost:3000/d/pdf-upload/pdf-upload-red-metrics-throughput"
+
+clean-pdfs: ## Remove all dropped/uploaded PDFs (e.g. after demo-upload-traffic)
+	@$(colour_fns)
+	@blue "Clearing dropped PDFs in $(PDF_STORAGE_HOST_DIR)..."
+	@rm -rf $(PDF_STORAGE_HOST_DIR)/*
+	@mkdir -p $(PDF_STORAGE_HOST_DIR)
+	@green "Done. $(PDF_STORAGE_HOST_DIR) is empty."
+
+.PHONY: clean-pdfs
 
 # -------- OTEL Tracing Demo Harness --------
 
