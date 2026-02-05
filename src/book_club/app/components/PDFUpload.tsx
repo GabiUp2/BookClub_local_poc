@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { fetchWithTracing } from '@/lib/fetchWithTracing'
+import { forceFlush } from '@/lib/tracing'
 
 interface UploadState {
   status: 'idle' | 'uploading' | 'success' | 'error'
@@ -68,6 +69,9 @@ export default function PDFUpload() {
         status: 'error',
         message: error instanceof Error ? error.message : 'Upload failed. Please try again.',
       })
+    } finally {
+      // Flush trace to collector so PDF upload span appears in Tempo promptly
+      forceFlush()
     }
   }, [apiBaseUrl])
 

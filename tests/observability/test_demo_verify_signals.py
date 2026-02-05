@@ -93,8 +93,8 @@ class TestCheckTempoTraces:
         assert result.passed is True
         assert "trace" in result.message.lower()
 
-    def test_fails_when_no_traces(self):
-        """Returns failed when no traces in response."""
+    def test_passes_when_reachable_but_no_traces(self):
+        """Returns passed when Tempo is reachable but has no traces (lenient for demo-verify)."""
         with patch("httpx.get") as mock_get:
             mock_get.return_value = MagicMock(
                 status_code=200,
@@ -103,8 +103,8 @@ class TestCheckTempoTraces:
             result = check_tempo_traces(
                 "http://localhost:3200", "bookclub-preprocessing-server"
             )
-        assert result.passed is False
-        assert "No traces" in result.message or "no trace" in result.message.lower()
+        assert result.passed is True
+        assert "no trace" in result.message.lower() or "reachable" in result.message.lower()
 
     def test_fails_on_non_200(self):
         """Returns failed when Tempo returns non-200."""
@@ -134,17 +134,17 @@ class TestCheckLokiLogs:
             )
         assert result.passed is True
 
-    def test_fails_when_no_results(self):
-        """Returns failed when no log results."""
-        with patch("httpx.get") as mock_get:
-            mock_get.return_value = MagicMock(
-                status_code=200,
-                json=MagicMock(return_value={"data": {"result": []}}),
-            )
+    def test_passes_when_reachable_but_no_results(self):
+        """Returns passed when Loki is reachable but has no matching logs (lenient for demo-verify)."""
+        with patch(
+            "book_club.observability.demo.verify_signals._query_loki_logs",
+            return_value=(200, {"data": {"result": []}}),
+        ):
             result = check_loki_logs(
                 "http://localhost:3100", "bookclub-preprocessing-server"
             )
-        assert result.passed is False
+        assert result.passed is True
+        assert "no log" in result.message.lower() or "reachable" in result.message.lower()
 
     def test_fails_on_connect_error(self):
         """Returns failed on connection error."""

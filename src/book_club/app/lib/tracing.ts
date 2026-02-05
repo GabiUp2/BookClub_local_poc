@@ -1,6 +1,6 @@
 /**
  * OpenTelemetry browser-side tracing initialisation.
- * 
+ *
  * Initialises OTEL SDK for browser, instruments fetch, and exports spans
  * via Next.js API route proxy to Alloy.
  */
@@ -10,11 +10,13 @@ import { Resource } from '@opentelemetry/resources'
 import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import type { SpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { FetchInstrumentation } from '@opentelemetry/instrumentation-fetch'
 import { registerInstrumentations } from '@opentelemetry/instrumentation'
 import { trace } from '@opentelemetry/api'
 
 let provider: WebTracerProvider | null = null
+let spanProcessor: SpanProcessor | null = null
 
 export function initTracing(): void {
   // Only initialise once
@@ -56,8 +58,11 @@ export function initTracing(): void {
       resource,
     })
 
-    // Add batch span processor with OTLP exporter
-    provider.addSpanProcessor(new BatchSpanProcessor(exporter))
+    // Flush every 1s so user actions (e.g. PDF upload) show up in Tempo quickly
+    spanProcessor = new BatchSpanProcessor(exporter, {
+      scheduledDelayMillis: 1000,
+    })
+    provider.addSpanProcessor(spanProcessor)
 
     // Register the provider globally
     provider.register()
@@ -90,6 +95,16 @@ export function initTracing(): void {
  */
 export function getTracer(name: string = 'bookclub-app') {
   return trace.getTracer(name)
+}
+
+/**
+ * Flush pending spans to the collector immediately.
+ * Call after critical operations (e.g. PDF upload) so traces appear in Tempo without waiting for the batch timer.
+ */
+export function forceFlush(): void {
+  if (spanProcessor && 'forceFlush' in spanProcessor && typeof spanProcessor.forceFlush === 'function') {
+    spanProcessor.forceFlush().catch(() => {})
+  }
 }
 
 // Auto-initialise when module loads (client-side only)

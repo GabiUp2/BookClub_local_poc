@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
-// Initialise OpenTelemetry tracing (client-side only)
-import '@/lib/tracing'
 import { CopilotProvider } from '@/components/CopilotProvider'
+import { TraceInit } from '@/components/TraceInit'
 
 export const metadata: Metadata = {
   title: 'Book Club',
@@ -17,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <TraceInit />
         <CopilotProvider>{children}</CopilotProvider>
       </body>
     </html>

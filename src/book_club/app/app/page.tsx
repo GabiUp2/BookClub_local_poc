@@ -1,5 +1,6 @@
 'use client'
 
+import '@/lib/tracing'
 import { useEffect, useState } from 'react'
 import PDFUpload from '../components/PDFUpload'
 import { fetchWithTracing } from '@/lib/fetchWithTracing'

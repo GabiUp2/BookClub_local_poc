@@ -22,11 +22,14 @@ services:
     working_dir: /app
     depends_on:
       - bookclub-preprocessing-server
+      - alloy
     env_file:
       - ./src/book_club/app/.env
     environment:
       LOGS_FORMAT: ${LOGS_FORMAT}
       LOGS_LEVEL: ${LOGS_LEVEL}
+      # OTEL proxy: Next.js API route forwards browser traces to Alloy
+      ALLOY_OTLP_ENDPOINT: http://alloy:4318/v1/traces
     ports:
       - "8000:8000"
     volumes:
