@@ -493,7 +493,7 @@ verify-logs: ## Check if recent logs reached Loki
 		--data-urlencode "start=$$START" \
 		--data-urlencode "end=$$END"); \
 	if echo "$$RESULT" | grep -q '"result":\[\]'; then \
-		red "No logs from main.py found in last 10 minutes"; \
+		red "No logs from main.py found in last 10 minutes"; \ 
 		exit 1; \
 	else \
 		green "Logs found in Loki"; \
