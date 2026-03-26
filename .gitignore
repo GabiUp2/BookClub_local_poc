@@ -1,0 +1,41 @@
+# .archive - put things noty longer relevant but relevant to history of solultion here
+
+# Other developers, please share your:
+# .cursor - for cooperate on rules for development on BookClub
+# .windsurf - for cooperate on rules for development on BookClub
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.coverage
+.mypy_cache/
+dist/
+build/
+
+# IDE
+.vscode/
+.windsurf/*
+!.windsurf/rules.md
+.cursor/*
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+
+# IDEs and tools
+.ruff_cache/
+.tmux/bin/
+
+# Observability data
+observability/loki/data/*
+observability/prometheus/data/*
+observability/grafana/data/*
+data/qdrant/*
+
+# Data
+/data/*
