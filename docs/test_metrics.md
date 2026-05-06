@@ -21,7 +21,7 @@ PROM_CLEANUP=after  # Options: before, after (default), both, none
 
 - `--pushgw`: Pushgateway URL (default: `http://localhost:9091`)
 - `--prom-job`: Job label for grouping (default: `pytest`)
-- `--prom-instance`: Instance label (default: hostname)
+- `--prom-instance`: Instace label (default: hostname)
 - `--prom-tags`: Extra comma-separated tags
 - `--prom-cleanup`: When to clean old metrics (default: `after`)
 
