@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-orc = "book_club.orc.main:app"
+orc = "book_club.orc.main:entrypoint"
 
 [dependency-groups]
 dev = [
