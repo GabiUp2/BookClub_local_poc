@@ -4,6 +4,7 @@ import glob
 import os
 import shutil
 import sys
+import tempfile
 import time
 from enum import Enum
 from pathlib import Path
@@ -15,7 +16,7 @@ from opentelemetry import trace
 from rich.markdown import Markdown
 from rich.table import Table
 
-from book_club.orc.runner import CommandFailed, run
+from book_club.orc.runner import CommandFailed, CommandResult, run
 from book_club.orc.runtime import (
     OrcRuntime,
     configure_action_logger,
@@ -56,14 +57,14 @@ class Browser(str, Enum):
 
 
 def _runtime(ctx: typer.Context) -> OrcRuntime:
-    root = ctx.find_root()
-    runtime = root.obj
+    runtime = ctx.find_root().obj
     if not isinstance(runtime, OrcRuntime):
         raise RuntimeError("ORC runtime was not initialised")
     return runtime
 
 
 def _uv() -> str:
+    """Return uv executable without trying to install it: uv is ORC's bootstrap boundary."""
     return shutil.which("uv") or str(Path.home() / ".local/bin/uv")
 
 
@@ -100,7 +101,7 @@ def _wait_http(
                 except httpx.HTTPError:
                     pass
                 time.sleep(1.0)
-    raise RuntimeError(f"Timed out waiting for {url}")
+        raise RuntimeError(f"Timed out waiting for {url}")
 
 
 def _check_http(
@@ -120,6 +121,20 @@ def _check_http(
         return response
 
 
+def _running_compose_services(runtime: OrcRuntime, services: set[str]) -> None:
+    result = run(
+        runtime,
+        "compose.running",
+        "Checking running Docker Compose services",
+        ["docker", "compose", "ps", "--services", "--status", "running"],
+        capture=True,
+    )
+    running = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    missing = services - running
+    if missing:
+        raise RuntimeError(f"Docker Compose services are not running: {', '.join(sorted(missing))}")
+
+
 def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
     if browser is Browser.none:
         return
@@ -132,6 +147,7 @@ def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
         "http://localhost:9091",
     ]
     exe = "firefox.exe" if browser is Browser.firefox else "chrome.exe"
+    process_name = "firefox" if browser is Browser.firefox else "chrome"
     standard_paths = (
         [
             r"C:\Program Files\Mozilla Firefox\firefox.exe",
@@ -143,15 +159,14 @@ def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         ]
     )
-    url_literal = ",".join(f'\"{url}\"' for url in urls)
-    path_literal = ",".join(f'\"{path}\"' for path in standard_paths)
+    url_literal = ",".join(f'"{url}"' for url in urls)
+    path_literal = ",".join(f'"{path}"' for path in standard_paths)
     flag = "-new-tab" if browser is Browser.firefox else "--new-tab"
     script = (
         f'$urls=@({url_literal}); '
         f'$paths=@({path_literal}); '
         f'$browser=(Get-Command {exe} -ErrorAction SilentlyContinue).Source; '
-        '$proc=Get-Process '
-        f'{browser.value} -ErrorAction SilentlyContinue | Select-Object -First 1; '
+        f'$proc=Get-Process {process_name} -ErrorAction SilentlyContinue | Select-Object -First 1; '
         'if (-not $browser -and $proc) {$browser=$proc.Path}; '
         'if (-not $browser) {foreach ($path in $paths) {if (Test-Path $path) {$browser=$path; break}}}; '
         'if (-not $browser) {Write-Error "Browser not found"; exit 1}; '
@@ -233,8 +248,12 @@ def main(
 
 @env_app.command("venv")
 def env_venv(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "env.venv", "Creating/updating .venv with Python 3.11", [_uv(), "venv", ".venv", "--python", "3.11"])
+    run(
+        _runtime(ctx),
+        "env.venv",
+        "Creating/updating .venv with Python 3.11",
+        [_uv(), "venv", ".venv", "--python", "3.11"],
+    )
 
 
 @env_app.command("deps-seed")
@@ -254,30 +273,34 @@ def env_deps_seed(ctx: typer.Context) -> None:
 
 @env_app.command("lock")
 def env_lock(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "env.lock", "Resolving project lockfile", [_uv(), "lock"])
+    run(_runtime(ctx), "env.lock", "Resolving project lockfile", [_uv(), "lock"])
 
 
 @env_app.command("sync")
 def env_sync(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "env.sync", "Synchronising runtime dependencies", [_uv(), "sync"])
+    run(_runtime(ctx), "env.sync", "Synchronising runtime dependencies", [_uv(), "sync"])
 
 
 @env_app.command("sync-dev")
 def env_sync_dev(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "env.sync-dev", "Synchronising runtime and development dependencies", [_uv(), "sync", "--all-groups"])
+    run(
+        _runtime(ctx),
+        "env.sync-dev",
+        "Synchronising runtime and development dependencies",
+        [_uv(), "sync", "--all-groups"],
+    )
 
 
 def _install_precommit(runtime: OrcRuntime) -> None:
-    run(
+    result = run(
         runtime,
         "env.precommit-install",
         "Installing pre-commit hooks",
         [_uv(), "run", "pre-commit", "install"],
         check=False,
     )
+    if result.returncode != 0:
+        runtime.emit("warning", "env.precommit-install", "Pre-commit hook installation failed; environment install continues")
 
 
 @env_app.command("install")
@@ -312,9 +335,8 @@ def env_setup(ctx: typer.Context) -> None:
 
 @dev_app.command("run")
 def dev_run(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
     run(
-        runtime,
+        _runtime(ctx),
         "dev.run",
         "Running Book Club application",
         [_uv(), "run", "-m", "book_club.__main__"],
@@ -324,15 +346,19 @@ def dev_run(ctx: typer.Context) -> None:
 
 @dev_app.command("test")
 def dev_test(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "dev.test", "Running test suite", [_uv(), "run", "-m", "pytest", "-q"], env={"PYTHONPATH": "src"})
+    run(
+        _runtime(ctx),
+        "dev.test",
+        "Running test suite",
+        [_uv(), "run", "-m", "pytest", "-q"],
+        env={"PYTHONPATH": "src"},
+    )
 
 
 @dev_app.command("coverage")
 def dev_coverage(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
     run(
-        runtime,
+        _runtime(ctx),
         "dev.coverage",
         "Running tests with coverage",
         [_uv(), "run", "-m", "pytest", "--cov=src", "--cov-report=term-missing"],
@@ -342,8 +368,7 @@ def dev_coverage(ctx: typer.Context) -> None:
 
 @dev_app.command("lint")
 def dev_lint(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "dev.lint", "Linting repository with Ruff", [_uv(), "run", "ruff", "check", "."])
+    run(_runtime(ctx), "dev.lint", "Linting repository with Ruff", [_uv(), "run", "ruff", "check", "."])
 
 
 @dev_app.command("format")
@@ -355,14 +380,17 @@ def dev_format(ctx: typer.Context) -> None:
 
 @dev_app.command("typecheck")
 def dev_typecheck(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "dev.typecheck", "Type-checking src with mypy", [_uv(), "run", "mypy", "src"])
+    run(_runtime(ctx), "dev.typecheck", "Type-checking src with mypy", [_uv(), "run", "mypy", "src"])
 
 
 @dev_app.command("precommit")
 def dev_precommit(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "dev.precommit", "Running pre-commit on all files", [_uv(), "run", "pre-commit", "run", "--all-files"])
+    run(
+        _runtime(ctx),
+        "dev.precommit",
+        "Running pre-commit on all files",
+        [_uv(), "run", "pre-commit", "run", "--all-files"],
+    )
 
 
 @dev_app.command("session")
@@ -415,8 +443,7 @@ def build_clean(ctx: typer.Context) -> None:
 
 @build_app.command("dist")
 def build_dist(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "build.dist", "Building source and wheel distributions", [_uv(), "build"])
+    run(_runtime(ctx), "build.dist", "Building source and wheel distributions", [_uv(), "build"])
 
 
 # ---------------------------------------------------------------------------
@@ -447,9 +474,8 @@ def test_metrics_push(ctx: typer.Context) -> None:
 
 @test_metrics_app.command("cleanup-behavior")
 def test_metrics_cleanup_behavior(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
     run(
-        runtime,
+        _runtime(ctx),
         "test-metrics.cleanup-behavior",
         "Testing all Pushgateway cleanup behaviours",
         [
@@ -528,15 +554,29 @@ def test_metrics_verify(ctx: typer.Context) -> None:
     query.raise_for_status()
     count = len(query.json().get("data", {}).get("result", []))
     if count == 0:
-        runtime.emit("warning", "test-metrics.verify.prometheus", "Metrics have not reached Prometheus yet; scrape interval may not have elapsed")
+        runtime.emit(
+            "warning",
+            "test-metrics.verify.prometheus",
+            "Metrics have not reached Prometheus yet; scrape interval may not have elapsed",
+        )
     else:
-        runtime.emit("success", "test-metrics.verify.prometheus", f"Found {count} verification metric series in Prometheus")
+        runtime.emit(
+            "success",
+            "test-metrics.verify.prometheus",
+            f"Found {count} verification metric series in Prometheus",
+        )
 
     run(
         runtime,
         "test-metrics.verify.cleanup-test",
         "Testing Pushgateway cleanup-before behaviour",
-        [_uv(), "run", "pytest", "tests/observability/test_pushgateway_cleanup.py::test_cleanup_before_prevents_accumulation", "-q"],
+        [
+            _uv(),
+            "run",
+            "pytest",
+            "tests/observability/test_pushgateway_cleanup.py::test_cleanup_before_prevents_accumulation",
+            "-q",
+        ],
     )
     for job in ("pytest_verify", "pytest_cleanup_validation"):
         httpx.delete(f"http://localhost:9091/metrics/job/{job}", timeout=5.0)
@@ -548,17 +588,149 @@ def test_metrics_verify(ctx: typer.Context) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _download_file(runtime: OrcRuntime, action: str, description: str, url: str, target: Path) -> None:
+    with runtime.action(action, description):
+        with runtime.console.status(f"[cyan]{description}[/cyan]"):
+            with httpx.stream("GET", url, follow_redirects=True, timeout=60.0) as response:
+                response.raise_for_status()
+                with target.open("wb") as handle:
+                    for chunk in response.iter_bytes():
+                        handle.write(chunk)
+
+
+def _os_release() -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in Path("/etc/os-release").read_text(encoding="utf-8").splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key] = value.strip().strip('"')
+    return values
+
+
+def _compose_install_apt(runtime: OrcRuntime) -> None:
+    run(runtime, "compose.apt-update", "Updating APT metadata", ["sudo", "apt", "update"])
+    run(
+        runtime,
+        "compose.apt-prereqs",
+        "Installing Docker repository prerequisites",
+        ["sudo", "apt", "install", "-y", "ca-certificates", "curl", "gnupg"],
+    )
+    run(
+        runtime,
+        "compose.keyring-dir",
+        "Creating Docker APT keyring directory",
+        ["sudo", "install", "-m", "0755", "-d", "/etc/apt/keyrings"],
+    )
+
+    with tempfile.TemporaryDirectory(prefix="bookclub-orc-") as temp_dir:
+        temp = Path(temp_dir)
+        key = temp / "docker.asc"
+        repo_file = temp / "docker.list"
+        _download_file(
+            runtime,
+            "compose.gpg-download",
+            "Downloading Docker repository signing key",
+            "https://download.docker.com/linux/ubuntu/gpg",
+            key,
+        )
+        run(
+            runtime,
+            "compose.gpg-install",
+            "Installing Docker repository signing key",
+            ["sudo", "gpg", "--dearmor", "--yes", "-o", "/etc/apt/keyrings/docker.gpg", str(key)],
+        )
+        run(runtime, "compose.gpg-permissions", "Setting Docker key permissions", ["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.gpg"])
+
+        architecture = run(
+            runtime,
+            "compose.architecture",
+            "Reading package architecture",
+            ["dpkg", "--print-architecture"],
+            capture=True,
+        ).stdout.strip()
+        release = _os_release()
+        codename = release.get("UBUNTU_CODENAME") or release.get("VERSION_CODENAME")
+        if not codename:
+            raise RuntimeError("Could not determine Ubuntu codename from /etc/os-release")
+        repo_file.write_text(
+            f"deb [arch={architecture} signed-by=/etc/apt/keyrings/docker.gpg] "
+            f"https://download.docker.com/linux/ubuntu {codename} stable\n",
+            encoding="utf-8",
+        )
+        run(
+            runtime,
+            "compose.repo-install",
+            "Installing Docker APT repository definition",
+            ["sudo", "install", "-m", "0644", str(repo_file), "/etc/apt/sources.list.d/docker.list"],
+        )
+
+    run(runtime, "compose.apt-refresh", "Refreshing APT metadata with Docker repository", ["sudo", "apt", "update"])
+    install = run(
+        runtime,
+        "compose.docker-packages",
+        "Installing Docker Compose v2 packages",
+        [
+            "sudo",
+            "apt",
+            "install",
+            "-y",
+            "docker-ce",
+            "docker-ce-cli",
+            "containerd.io",
+            "docker-buildx-plugin",
+            "docker-compose-plugin",
+        ],
+        check=False,
+    )
+    if install.returncode != 0:
+        runtime.emit("warning", "compose.docker-packages", "Full Docker package install failed; trying Compose plugin only")
+        run(
+            runtime,
+            "compose.plugin",
+            "Installing Docker Compose plugin",
+            ["sudo", "apt", "install", "-y", "docker-compose-plugin"],
+        )
+
+
+def _compose_install_user(runtime: OrcRuntime, version: str) -> None:
+    architecture = os.uname().machine
+    binary = {
+        "x86_64": "docker-compose-linux-x86_64",
+        "aarch64": "docker-compose-linux-aarch64",
+        "arm64": "docker-compose-linux-aarch64",
+    }.get(architecture)
+    if binary is None:
+        raise RuntimeError(f"Unsupported architecture: {architecture}")
+
+    target_dir = Path.home() / ".docker" / "cli-plugins"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / "docker-compose"
+    _download_file(
+        runtime,
+        "compose.download",
+        f"Downloading Docker Compose {version}",
+        f"https://github.com/docker/compose/releases/download/{version}/{binary}",
+        target,
+    )
+    target.chmod(0o755)
+
+
 @compose_app.command("version")
 def compose_version(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    run(runtime, "compose.version", "Reading Docker Compose version", ["docker", "compose", "version"], check=False)
+    run(
+        _runtime(ctx),
+        "compose.version",
+        "Reading Docker Compose version",
+        ["docker", "compose", "version"],
+        check=False,
+    )
 
 
 @compose_app.command("switch")
 def compose_switch(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
     run(
-        runtime,
+        _runtime(ctx),
         "compose.switch",
         "Installing docker-compose-switch",
         ["sudo", "apt", "install", "-y", "docker-compose-switch"],
@@ -584,38 +756,10 @@ def compose_install(
         runtime.emit("success", "compose.install", "Docker Compose v2 is already installed")
         return
 
-    if shutil.which("apt"):
-        run(runtime, "compose.apt-update", "Updating APT metadata", ["sudo", "apt", "update"])
-        run(
-            runtime,
-            "compose.apt-prereqs",
-            "Installing Docker repository prerequisites",
-            ["sudo", "apt", "install", "-y", "ca-certificates", "curl", "gnupg"],
-        )
-        run(runtime, "compose.keyring-dir", "Creating Docker APT keyring directory", ["sudo", "install", "-m", "0755", "-d", "/etc/apt/keyrings"])
-        run(
-            runtime,
-            "compose.docker-packages",
-            "Installing Docker Compose v2 packages",
-            ["sudo", "apt", "install", "-y", "docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin", "docker-compose-plugin"],
-        )
+    if shutil.which("apt") and Path("/etc/os-release").exists():
+        _compose_install_apt(runtime)
     else:
-        arch = os.uname().machine
-        binary = {"x86_64": "docker-compose-linux-x86_64", "aarch64": "docker-compose-linux-aarch64", "arm64": "docker-compose-linux-aarch64"}.get(arch)
-        if binary is None:
-            raise RuntimeError(f"Unsupported architecture: {arch}")
-        target_dir = Path.home() / ".docker" / "cli-plugins"
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / "docker-compose"
-        url = f"https://github.com/docker/compose/releases/download/{version}/{binary}"
-        with runtime.action("compose.download", f"Downloading Docker Compose {version}"):
-            with httpx.stream("GET", url, follow_redirects=True, timeout=60.0) as response:
-                response.raise_for_status()
-                with target.open("wb") as handle:
-                    for chunk in response.iter_bytes():
-                        handle.write(chunk)
-            target.chmod(0o755)
-
+        _compose_install_user(runtime, version)
     compose_version(ctx)
 
 
@@ -627,8 +771,14 @@ def compose_install(
 @obs_app.command("quick")
 def obs_quick(ctx: typer.Context) -> None:
     runtime = _runtime(ctx)
-    run(runtime, "obs.quick.services", "Checking observability containers", ["docker", "compose", "ps", "alloy", "loki", "grafana"], check=True)
-    _check_http(runtime, "obs.quick.loki", "Checking Loki readiness", "http://localhost:3100/ready", headers={"X-Scope-OrgID": "local"})
+    _running_compose_services(runtime, {"alloy", "loki", "grafana"})
+    _check_http(
+        runtime,
+        "obs.quick.loki",
+        "Checking Loki readiness",
+        "http://localhost:3100/ready",
+        headers={"X-Scope-OrgID": "local"},
+    )
     _check_http(runtime, "obs.quick.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
 
 
@@ -654,13 +804,14 @@ def obs_logs(ctx: typer.Context) -> None:
 @obs_app.command("verify")
 def obs_verify(ctx: typer.Context) -> None:
     runtime = _runtime(ctx)
-    run(
+    _running_compose_services(runtime, {"alloy", "loki", "grafana", "prometheus"})
+    _check_http(
         runtime,
-        "obs.verify.services",
-        "Checking observability services are running",
-        ["docker", "compose", "ps", "alloy", "loki", "grafana", "prometheus"],
+        "obs.verify.loki",
+        "Checking Loki readiness",
+        "http://localhost:3100/ready",
+        headers={"X-Scope-OrgID": "local"},
     )
-    _check_http(runtime, "obs.verify.loki", "Checking Loki readiness", "http://localhost:3100/ready", headers={"X-Scope-OrgID": "local"})
     _check_http(runtime, "obs.verify.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
     _check_http(runtime, "obs.verify.alloy", "Checking Alloy HTTP endpoint", "http://localhost:12345/")
     run(runtime, "obs.verify.generate-log", "Generating a development test log", [sys.executable, "main.py"])
@@ -674,7 +825,12 @@ def obs_verify(ctx: typer.Context) -> None:
     )
     if "filename" not in labels.text:
         raise RuntimeError("No filename label found in Loki")
-    datasources = _check_http(runtime, "obs.verify.datasources", "Checking Grafana datasources", "http://localhost:3000/api/datasources")
+    datasources = _check_http(
+        runtime,
+        "obs.verify.datasources",
+        "Checking Grafana datasources",
+        "http://localhost:3000/api/datasources",
+    )
     if "http://loki:3100" not in datasources.text:
         raise RuntimeError("Loki datasource is not configured in Grafana")
 
@@ -692,14 +848,25 @@ def obs_integration(ctx: typer.Context) -> None:
         ["docker", "compose", "exec", "-T", "bookclub-app", "wget", "-qO-", "http://bookclub-server:8010/health"],
     )
     _check_http(runtime, "obs.integration.metrics", "Checking server metrics endpoint", "http://localhost:8010/metrics")
-    targets = _check_http(runtime, "obs.integration.prometheus", "Checking Prometheus targets", "http://localhost:9090/api/v1/targets").json()
+    targets = _check_http(
+        runtime,
+        "obs.integration.prometheus",
+        "Checking Prometheus targets",
+        "http://localhost:9090/api/v1/targets",
+    ).json()
     healthy_server = any(
         target.get("labels", {}).get("job") == "bookclub-server" and target.get("health") == "up"
         for target in targets.get("data", {}).get("activeTargets", [])
     )
     if not healthy_server:
         raise RuntimeError("Prometheus target bookclub-server is not up")
-    _check_http(runtime, "obs.integration.loki", "Checking Loki readiness", "http://localhost:3100/ready", headers={"X-Scope-OrgID": "local"})
+    _check_http(
+        runtime,
+        "obs.integration.loki",
+        "Checking Loki readiness",
+        "http://localhost:3100/ready",
+        headers={"X-Scope-OrgID": "local"},
+    )
     _check_http(runtime, "obs.integration.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
     runtime.emit("success", "obs.integration", "Integration verification complete")
 
@@ -723,7 +890,11 @@ def maintenance_purge_old_data(
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation.")] = False,
 ) -> None:
     runtime = _runtime(ctx)
-    runtime.emit("warning", "maintenance.purge", "This deletes local logs, metrics history, traces/vector data and Grafana session data; configuration and dashboards are kept")
+    runtime.emit(
+        "warning",
+        "maintenance.purge",
+        "This deletes local logs, metrics history, traces/vector data and Grafana session data; configuration and dashboards are kept",
+    )
     if not yes and not typer.confirm("Are you sure?", default=False):
         runtime.emit("warning", "maintenance.purge", "Purge cancelled")
         return
@@ -757,7 +928,14 @@ def maintenance_purge_old_data(
         ["docker", "compose", "up", "-d", "prometheus", "loki", "pushgateway", "qdrant", "grafana", "alloy"],
     )
     _wait_http(runtime, "maintenance.purge.prometheus", "Waiting for Prometheus", "http://localhost:9090/-/ready", timeout=90)
-    _wait_http(runtime, "maintenance.purge.loki", "Waiting for Loki", "http://localhost:3100/ready", timeout=90, headers={"X-Scope-OrgID": "local"})
+    _wait_http(
+        runtime,
+        "maintenance.purge.loki",
+        "Waiting for Loki",
+        "http://localhost:3100/ready",
+        timeout=90,
+        headers={"X-Scope-OrgID": "local"},
+    )
     _wait_http(runtime, "maintenance.purge.pushgateway", "Waiting for Pushgateway", "http://localhost:9091/-/ready", timeout=90)
     _wait_http(runtime, "maintenance.purge.grafana", "Waiting for Grafana", "http://localhost:3000/api/health", timeout=90)
 
@@ -780,8 +958,8 @@ def acr_list(ctx: typer.Context) -> None:
     for path in _acr_files():
         first_line = path.read_text(encoding="utf-8").splitlines()[0]
         title = first_line.removeprefix("# ")
-        number = path.name.split("-", 2)[:2]
-        table.add_row("-".join(number), title)
+        number = "-".join(path.name.split("-", 2)[:2])
+        table.add_row(number, title)
     runtime.console.print(table)
 
 
@@ -795,5 +973,17 @@ def acr_show(ctx: typer.Context, number: int) -> None:
     runtime.console.print(Markdown(matches[0].read_text(encoding="utf-8")))
 
 
+def entrypoint() -> None:
+    """Console-script boundary: render predictable failures without Python tracebacks."""
+    try:
+        app()
+    except CommandFailed as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(exc.result.returncode) from exc
+    except httpx.HTTPError as exc:
+        typer.echo(f"HTTP orchestration failed: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+
 if __name__ == "__main__":
-    app()
+    entrypoint()
