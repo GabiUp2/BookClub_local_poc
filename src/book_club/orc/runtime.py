@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import sys
@@ -14,11 +15,41 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace.status import Status, StatusCode
+from prometheus_client import CollectorRegistry, Counter, Histogram, push_to_gateway
 from rich.console import Console
 
 
 ACTION_LOGGER_NAME = "book_club.orc.action"
 _TRACING_CONFIGURED = False
+_METRICS_PUSH_REGISTERED = False
+
+_ACTION_REGISTRY = CollectorRegistry()
+_ACTION_SIGNALS = Counter(
+    "bookclub_orc_action_signals_total",
+    "ORC action signals emitted by state.",
+    ("action", "state"),
+    registry=_ACTION_REGISTRY,
+)
+_ACTION_DURATION = Histogram(
+    "bookclub_orc_action_duration_seconds",
+    "Duration of completed ORC orchestration actions.",
+    ("action", "outcome"),
+    registry=_ACTION_REGISTRY,
+)
+
+
+def _push_action_metrics(logger: logging.Logger) -> None:
+    """Best-effort push of short-lived CLI metrics to the local Pushgateway."""
+    endpoint = os.environ.get("PUSHGATEWAY_URL", "http://localhost:9091")
+    try:
+        push_to_gateway(endpoint, job="bookclub_orc", registry=_ACTION_REGISTRY)
+    except Exception as exc:  # telemetry must never break orchestration
+        logger.debug(
+            "Could not push ORC metrics to %s: %s",
+            endpoint,
+            exc,
+            extra={"orc_action": "telemetry.metrics", "orc_state": "warning"},
+        )
 
 
 @dataclass(frozen=True)
@@ -32,7 +63,7 @@ class OrcRuntime:
     logger: logging.Logger
 
     def emit(self, state: str, action: str, message: str) -> None:
-        """Emit one action signal to terminal, logs and the active trace."""
+        """Emit one action signal to terminal, logs, metrics and the active trace."""
         terminal_styles = {
             "start": ("→", "cyan"),
             "success": ("✓", "green"),
@@ -54,6 +85,7 @@ class OrcRuntime:
             message,
             extra={"orc_action": action, "orc_state": state},
         )
+        _ACTION_SIGNALS.labels(action=action, state=state).inc()
 
         span = trace.get_current_span()
         if span.is_recording():
@@ -86,6 +118,7 @@ class OrcRuntime:
                 yield
             except Exception as exc:
                 duration = time.perf_counter() - started
+                _ACTION_DURATION.labels(action=name, outcome="failure").observe(duration)
                 if self.trace_enabled and span is not None:
                     span.record_exception(exc)
                     span.set_attribute("orc.duration_seconds", duration)
@@ -94,6 +127,7 @@ class OrcRuntime:
                 raise
             else:
                 duration = time.perf_counter() - started
+                _ACTION_DURATION.labels(action=name, outcome="success").observe(duration)
                 if self.trace_enabled and span is not None:
                     span.set_attribute("orc.duration_seconds", duration)
                 self.emit("success", name, f"{description} ({duration:.2f}s)")
@@ -109,31 +143,35 @@ def make_console(color: bool | None) -> Console:
 
 
 def configure_action_logger(verbose: bool) -> logging.Logger:
+    global _METRICS_PUSH_REGISTERED
+
     logger = logging.getLogger(ACTION_LOGGER_NAME)
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     logger.propagate = False
 
-    if logger.handlers:
-        return logger
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s %(levelname)s %(name)s action=%(orc_action)s state=%(orc_state)s %(message)s"
+        )
 
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)s %(name)s action=%(orc_action)s state=%(orc_state)s %(message)s"
-    )
+        logs_dir = Path(os.environ.get("ORC_LOG_DIR", "logs"))
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(logs_dir / "orc.log")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except OSError:
+            # ORC must still be usable in read-only checkouts or constrained shells.
+            pass
 
-    logs_dir = Path(os.environ.get("ORC_LOG_DIR", "logs"))
-    try:
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(logs_dir / "orc.log")
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    except OSError:
-        # ORC must still be usable in read-only checkouts or constrained shells.
-        pass
+        if verbose:
+            stream_handler = logging.StreamHandler(sys.stderr)
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
 
-    if verbose:
-        stream_handler = logging.StreamHandler(sys.stderr)
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+    if not _METRICS_PUSH_REGISTERED:
+        atexit.register(_push_action_metrics, logger)
+        _METRICS_PUSH_REGISTERED = True
 
     return logger
 
