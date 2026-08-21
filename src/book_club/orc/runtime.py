@@ -41,8 +41,14 @@ _ACTION_DURATION = Histogram(
 def _push_action_metrics(logger: logging.Logger) -> None:
     """Best-effort push of short-lived CLI metrics to the local Pushgateway."""
     endpoint = os.environ.get("PUSHGATEWAY_URL", "http://localhost:9091")
+    timeout = float(os.environ.get("ORC_METRICS_PUSH_TIMEOUT_SECONDS", "1.0"))
     try:
-        push_to_gateway(endpoint, job="bookclub_orc", registry=_ACTION_REGISTRY)
+        push_to_gateway(
+            endpoint,
+            job="bookclub_orc",
+            registry=_ACTION_REGISTRY,
+            timeout=timeout,
+        )
     except Exception as exc:  # telemetry must never break orchestration
         logger.debug(
             "Could not push ORC metrics to %s: %s",
