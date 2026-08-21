@@ -13,10 +13,12 @@ from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace.status import Status, StatusCode
 from rich.console import Console
 
 
 ACTION_LOGGER_NAME = "book_club.orc.action"
+_TRACING_CONFIGURED = False
 
 
 @dataclass(frozen=True)
@@ -87,7 +89,7 @@ class OrcRuntime:
                 if self.trace_enabled and span is not None:
                     span.record_exception(exc)
                     span.set_attribute("orc.duration_seconds", duration)
-                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+                    span.set_status(Status(StatusCode.ERROR, str(exc)))
                 self.emit("failure", name, f"{description} failed: {exc}")
                 raise
             else:
@@ -138,7 +140,8 @@ def configure_action_logger(verbose: bool) -> logging.Logger:
 
 def configure_tracing(enabled: bool) -> None:
     """Configure a CLI-local OTLP tracer when --trace is requested."""
-    if not enabled:
+    global _TRACING_CONFIGURED
+    if not enabled or _TRACING_CONFIGURED:
         return
 
     # Import lazily so normal ORC invocations do not initialise exporter code.
@@ -156,3 +159,4 @@ def configure_tracing(enabled: bool) -> None:
     exporter = OTLPSpanExporter(endpoint=endpoint, insecure=endpoint.startswith("http://"))
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
+    _TRACING_CONFIGURED = True
