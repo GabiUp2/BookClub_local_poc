@@ -28,12 +28,12 @@ It may:
 - perform pre-flight and expected-output checks;
 - trigger external tools and local services;
 - translate failures into exit codes;
-- emit action signals to terminal/logging/tracing;
+- emit action signals to terminal/logging/metrics/tracing;
 - create tracing context when `--trace` is enabled.
 
 It must not contain application/domain logic. Product capabilities must remain callable independently from ORC so the same functions can be used by the UI, APIs, tests, and future adapters.
 
-The `uv`/ORC boundary is explicit: `uv` bootstraps and synchronises the Python environment; ORC operates once that environment exists.
+The `uv`/ORC boundary is explicit: **uv owns Python environment creation, dependency locking and dependency synchronisation. ORC starts after that environment exists.** ORC may inspect the uv-managed environment and invoke already-installed development tools through `uv run`, but it does not wrap `uv venv`, `uv lock`, or `uv sync` as ORC commands.
 
 ## CLI conventions
 
@@ -42,7 +42,8 @@ The `uv`/ORC boundary is explicit: `uv` bootstraps and synchronises the Python e
 - `--trace` is available from the first ORC version.
 - Rich is the terminal presentation layer.
 - Typer is the command and option layer.
-- Action signals provide a common start/success/warning/failure vocabulary and can fan out to terminal output, logs, and trace events.
+- Action signals provide a common start/success/warning/failure vocabulary and fan out to terminal output, structured logs, Prometheus action metrics, and trace events.
+- Telemetry emission is best-effort and must not turn a successful orchestration operation into a failure.
 
 ## Migration / implementation
 
@@ -52,7 +53,7 @@ The migration is deliberately incremental.
 2. Keep the current Makefile working while ORC is developed.
 3. Add a visible yellow Make warning pointing developers to this ACR and the ORC migration.
 4. Establish the ACR method and expose ACRs through ORC.
-5. Recreate the existing Make command categories and orchestration level in ORC.
+5. Recreate the existing Make operational categories and orchestration level in ORC, except Python-environment mutation which moves directly to `uv` by design.
 6. Add a first-class development-session setup command.
 7. Start using ORC as the preferred interface while Make remains a compatibility path.
 8. Remove Make only after ORC has reached behavioural parity and has been used successfully for normal development.
@@ -61,7 +62,7 @@ The migration is deliberately incremental.
 
 ORC should preserve the intent of the current Make help categories:
 
-- Environment
+- Environment — diagnostics only; mutations are direct `uv` operations
 - Development
 - Build / clean
 - Testing / metrics
@@ -80,9 +81,10 @@ The command names may be reorganised into subcommands instead of preserving the 
 - orchestration helpers can be unit-tested;
 - Rich provides consistent terminal UX, progress bars, spinners, colour, and structured status output;
 - Typer provides discoverable subcommands and typed parameters;
-- tracing and action-signal emission are easier to standardise;
+- tracing, metrics and action-signal emission are easier to standardise;
 - platform-specific behaviour can be isolated behind explicit functions;
-- application functions remain reusable by UI and tests rather than being trapped behind shell commands.
+- application functions remain reusable by UI and tests rather than being trapped behind shell commands;
+- uv remains the single owner of Python package/environment state instead of being hidden behind another abstraction.
 
 ### Negative
 
@@ -97,7 +99,7 @@ These costs are accepted because the existing Makefile has already crossed the t
 
 The migration is considered complete when:
 
-- every still-relevant Make category has an ORC equivalent;
+- every still-relevant Make operational category has an ORC or direct-uv equivalent;
 - the normal development-session setup is available through ORC;
 - ORC is used successfully for day-to-day development;
 - tests cover the orchestration helpers that contain branching or expected-output checks;
