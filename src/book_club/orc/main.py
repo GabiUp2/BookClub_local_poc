@@ -16,7 +16,7 @@ from opentelemetry import trace
 from rich.markdown import Markdown
 from rich.table import Table
 
-from book_club.orc.runner import CommandFailed, CommandResult, run
+from book_club.orc.runner import CommandFailed, run
 from book_club.orc.runtime import (
     OrcRuntime,
     configure_action_logger,
@@ -31,7 +31,7 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
-env_app = typer.Typer(help="Environment and dependency operations.")
+env_app = typer.Typer(help="Inspect the uv-managed Python environment.")
 dev_app = typer.Typer(help="Development commands and development-session setup.")
 build_app = typer.Typer(help="Build and clean operations.")
 test_metrics_app = typer.Typer(help="Test metrics and Pushgateway verification.")
@@ -63,9 +63,13 @@ def _runtime(ctx: typer.Context) -> OrcRuntime:
     return runtime
 
 
-def _uv() -> str:
-    """Return uv executable without trying to install it: uv is ORC's bootstrap boundary."""
-    return shutil.which("uv") or str(Path.home() / ".local/bin/uv")
+def _uv() -> str | None:
+    """Find uv without trying to install or mutate the Python environment."""
+    executable = shutil.which("uv")
+    if executable:
+        return executable
+    fallback = Path.home() / ".local" / "bin" / "uv"
+    return str(fallback) if fallback.exists() else None
 
 
 def _git_value(runtime: OrcRuntime, *args: str, default: str = "unknown") -> str:
@@ -242,90 +246,61 @@ def main(
 
 
 # ---------------------------------------------------------------------------
-# Environment
+# Environment — inspection only. uv owns creation, locking and synchronisation.
 # ---------------------------------------------------------------------------
 
 
-@env_app.command("venv")
-def env_venv(ctx: typer.Context) -> None:
-    run(
-        _runtime(ctx),
-        "env.venv",
-        "Creating/updating .venv with Python 3.11",
-        [_uv(), "venv", ".venv", "--python", "3.11"],
-    )
-
-
-@env_app.command("deps-seed")
-def env_deps_seed(ctx: typer.Context) -> None:
+@env_app.command("status")
+def env_status(ctx: typer.Context) -> None:
     runtime = _runtime(ctx)
-    with runtime.action("env.deps-seed", "Creating legacy requirements seed files when absent"):
-        requirements = Path("requirements.in")
-        requirements_dev = Path("requirements-dev.in")
-        if not requirements.exists():
-            requirements.write_text("httpx>=0.27.0\npydantic>=2.8.0\nrich>=13.7.0\n", encoding="utf-8")
-        if not requirements_dev.exists():
-            requirements_dev.write_text(
-                "pytest>=8.2.0\npytest-cov>=5.0.0\nruff>=0.6.0\nmypy>=1.11.0\npre-commit>=3.7.0\n",
-                encoding="utf-8",
-            )
+    table = Table(title="uv / ORC environment boundary")
+    table.add_column("Check")
+    table.add_column("State")
+    table.add_column("Detail")
+
+    uv = _uv()
+    if uv:
+        result = run(
+            runtime,
+            "env.uv-version",
+            "Reading uv version",
+            [uv, "--version"],
+            capture=True,
+            check=False,
+        )
+        state = "OK" if result.returncode == 0 else "ERROR"
+        detail = result.stdout.strip() or result.stderr.strip() or uv
+        table.add_row("uv", state, detail)
+    else:
+        table.add_row("uv", "MISSING", "Install uv before running ORC bootstrap-dependent commands")
+
+    table.add_row("Python", "OK", sys.version.split()[0])
+    table.add_row("pyproject.toml", "OK" if Path("pyproject.toml").exists() else "MISSING", str(Path("pyproject.toml")))
+    table.add_row("uv.lock", "OK" if Path("uv.lock").exists() else "MISSING", str(Path("uv.lock")))
+    table.add_row(".venv", "OK" if Path(".venv").exists() else "MISSING", str(Path(".venv")))
+    runtime.console.print(table)
 
 
-@env_app.command("lock")
-def env_lock(ctx: typer.Context) -> None:
-    run(_runtime(ctx), "env.lock", "Resolving project lockfile", [_uv(), "lock"])
-
-
-@env_app.command("sync")
-def env_sync(ctx: typer.Context) -> None:
-    run(_runtime(ctx), "env.sync", "Synchronising runtime dependencies", [_uv(), "sync"])
-
-
-@env_app.command("sync-dev")
-def env_sync_dev(ctx: typer.Context) -> None:
-    run(
-        _runtime(ctx),
-        "env.sync-dev",
-        "Synchronising runtime and development dependencies",
-        [_uv(), "sync", "--all-groups"],
-    )
-
-
-def _install_precommit(runtime: OrcRuntime) -> None:
-    result = run(
-        runtime,
-        "env.precommit-install",
-        "Installing pre-commit hooks",
-        [_uv(), "run", "pre-commit", "install"],
-        check=False,
-    )
-    if result.returncode != 0:
-        runtime.emit("warning", "env.precommit-install", "Pre-commit hook installation failed; environment install continues")
-
-
-@env_app.command("install")
-def env_install(ctx: typer.Context) -> None:
+@env_app.command("doctor")
+def env_doctor(ctx: typer.Context) -> None:
+    """Fail when the uv-managed environment is not ready for normal ORC usage."""
     runtime = _runtime(ctx)
-    env_venv(ctx)
-    env_lock(ctx)
-    env_sync(ctx)
-    _install_precommit(runtime)
-
-
-@env_app.command("install-dev")
-def env_install_dev(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    env_venv(ctx)
-    env_lock(ctx)
-    env_sync_dev(ctx)
-    _install_precommit(runtime)
-
-
-@env_app.command("setup")
-def env_setup(ctx: typer.Context) -> None:
-    runtime = _runtime(ctx)
-    env_install_dev(ctx)
-    runtime.emit("success", "env.setup", "uv development environment is ready")
+    uv = _uv()
+    checks = {
+        "uv executable": uv is not None,
+        "pyproject.toml": Path("pyproject.toml").is_file(),
+        "uv.lock": Path("uv.lock").is_file(),
+        ".venv": Path(".venv").is_dir(),
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    for name, ok in checks.items():
+        runtime.emit("success" if ok else "warning", "env.doctor", f"{name}: {'OK' if ok else 'missing'}")
+    if failed:
+        raise RuntimeError(
+            "uv-managed environment is not ready: "
+            + ", ".join(failed)
+            + ". Bootstrap with uv before using ORC."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -335,61 +310,82 @@ def env_setup(ctx: typer.Context) -> None:
 
 @dev_app.command("run")
 def dev_run(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     run(
         _runtime(ctx),
         "dev.run",
         "Running Book Club application",
-        [_uv(), "run", "-m", "book_club.__main__"],
+        [uv, "run", "-m", "book_club.__main__"],
         env={"GRAFANA_URL": os.environ.get("GRAFANA_URL", "http://athena:3000")},
     )
 
 
 @dev_app.command("test")
 def dev_test(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     run(
         _runtime(ctx),
         "dev.test",
         "Running test suite",
-        [_uv(), "run", "-m", "pytest", "-q"],
+        [uv, "run", "-m", "pytest", "-q"],
         env={"PYTHONPATH": "src"},
     )
 
 
 @dev_app.command("coverage")
 def dev_coverage(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     run(
         _runtime(ctx),
         "dev.coverage",
         "Running tests with coverage",
-        [_uv(), "run", "-m", "pytest", "--cov=src", "--cov-report=term-missing"],
+        [uv, "run", "-m", "pytest", "--cov=src", "--cov-report=term-missing"],
         env={"PYTHONPATH": "src"},
     )
 
 
 @dev_app.command("lint")
 def dev_lint(ctx: typer.Context) -> None:
-    run(_runtime(ctx), "dev.lint", "Linting repository with Ruff", [_uv(), "run", "ruff", "check", "."])
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
+    run(_runtime(ctx), "dev.lint", "Linting repository with Ruff", [uv, "run", "ruff", "check", "."])
 
 
 @dev_app.command("format")
 def dev_format(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     runtime = _runtime(ctx)
-    run(runtime, "dev.format-fix", "Applying Ruff fixes", [_uv(), "run", "ruff", "check", "--fix", "."])
-    run(runtime, "dev.format", "Formatting repository with Ruff", [_uv(), "run", "ruff", "format", "."])
+    run(runtime, "dev.format-fix", "Applying Ruff fixes", [uv, "run", "ruff", "check", "--fix", "."])
+    run(runtime, "dev.format", "Formatting repository with Ruff", [uv, "run", "ruff", "format", "."])
 
 
 @dev_app.command("typecheck")
 def dev_typecheck(ctx: typer.Context) -> None:
-    run(_runtime(ctx), "dev.typecheck", "Type-checking src with mypy", [_uv(), "run", "mypy", "src"])
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
+    run(_runtime(ctx), "dev.typecheck", "Type-checking src with mypy", [uv, "run", "mypy", "src"])
 
 
 @dev_app.command("precommit")
 def dev_precommit(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     run(
         _runtime(ctx),
         "dev.precommit",
         "Running pre-commit on all files",
-        [_uv(), "run", "pre-commit", "run", "--all-files"],
+        [uv, "run", "pre-commit", "run", "--all-files"],
     )
 
 
@@ -443,7 +439,10 @@ def build_clean(ctx: typer.Context) -> None:
 
 @build_app.command("dist")
 def build_dist(ctx: typer.Context) -> None:
-    run(_runtime(ctx), "build.dist", "Building source and wheel distributions", [_uv(), "build"])
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
+    run(_runtime(ctx), "build.dist", "Building source and wheel distributions", [uv, "build"])
 
 
 # ---------------------------------------------------------------------------
@@ -453,6 +452,9 @@ def build_dist(ctx: typer.Context) -> None:
 
 @test_metrics_app.command("push")
 def test_metrics_push(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     runtime = _runtime(ctx)
     branch = _git_value(runtime, "branch", "--show-current")
     run(
@@ -460,7 +462,7 @@ def test_metrics_push(ctx: typer.Context) -> None:
         "test-metrics.push",
         "Running tests and pushing metrics to Pushgateway",
         [
-            _uv(),
+            uv,
             "run",
             "pytest",
             "--pushgw=http://localhost:9091",
@@ -474,12 +476,15 @@ def test_metrics_push(ctx: typer.Context) -> None:
 
 @test_metrics_app.command("cleanup-behavior")
 def test_metrics_cleanup_behavior(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     run(
         _runtime(ctx),
         "test-metrics.cleanup-behavior",
         "Testing all Pushgateway cleanup behaviours",
         [
-            _uv(),
+            uv,
             "run",
             "pytest",
             "tests/observability/test_pushgateway_cleanup.py",
@@ -494,13 +499,16 @@ def test_metrics_cleanup_behavior(ctx: typer.Context) -> None:
 
 @test_metrics_app.command("verify")
 def test_metrics_verify(ctx: typer.Context) -> None:
+    uv = _uv()
+    if uv is None:
+        raise RuntimeError("uv is not available; bootstrap the project with uv first")
     runtime = _runtime(ctx)
     result = run(
         runtime,
         "test-metrics.verify.test",
         "Executing verification test and pushing its metrics",
         [
-            _uv(),
+            uv,
             "run",
             "pytest",
             "tests/observability/test_monitoring.py::test_server_health_endpoint",
@@ -571,7 +579,7 @@ def test_metrics_verify(ctx: typer.Context) -> None:
         "test-metrics.verify.cleanup-test",
         "Testing Pushgateway cleanup-before behaviour",
         [
-            _uv(),
+            uv,
             "run",
             "pytest",
             "tests/observability/test_pushgateway_cleanup.py::test_cleanup_before_prevents_accumulation",
@@ -980,8 +988,8 @@ def entrypoint() -> None:
     except CommandFailed as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(exc.result.returncode) from exc
-    except httpx.HTTPError as exc:
-        typer.echo(f"HTTP orchestration failed: {exc}", err=True)
+    except (httpx.HTTPError, RuntimeError) as exc:
+        typer.echo(f"ORC failed: {exc}", err=True)
         raise SystemExit(1) from exc
 
 
