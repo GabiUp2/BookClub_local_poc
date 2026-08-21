@@ -6,7 +6,7 @@ The migration is intentionally non-destructive: the Makefile remains a compatibi
 
 ## Bootstrap boundary
 
-`uv` owns bootstrap and dependency synchronisation. ORC assumes the Python environment can already run it.
+`uv` owns creation of the Python environment, dependency locking and dependency synchronisation. ORC assumes that environment can already run it.
 
 ```bash
 uv lock
@@ -15,6 +15,13 @@ uv run orc --help
 ```
 
 After installation/sync, the console script is registered through `pyproject.toml`, so `orc` is also available from an activated environment.
+
+ORC does **not** wrap `uv venv`, `uv lock` or `uv sync`. `orc env` is diagnostic only:
+
+```bash
+orc env status
+orc env doctor
+```
 
 ## Global behaviour
 
@@ -33,17 +40,17 @@ orc [--color|--no-color] [--trace] [-v|--verbose] [-q|--quiet] COMMAND ...
 
 ## Command categories
 
-The first migration milestone keeps the same intent as the current Make categories while replacing the flat target namespace with subcommands.
+The first migration milestone keeps the same operational areas as the current Makefile while replacing the flat target namespace with subcommands. Python-environment mutation is the deliberate exception because it stays on the `uv` side of the boundary.
 
-| Make category / target | ORC |
+| Make category / target | Replacement |
 | --- | --- |
-| setup/environment | `orc env ...` |
-| `venv` | `orc env venv` |
-| `deps-seed` | `orc env deps-seed` |
-| `lock` | `orc env lock` |
-| `install` | `orc env install` |
-| `install-dev` / `setup` | `orc env install-dev` / `orc env setup` |
-| `sync` / `sync-dev` | `orc env sync` / `orc env sync-dev` |
+| setup/environment | direct `uv` + diagnostic `orc env ...` |
+| `ensure-uv` | install/manage `uv` directly |
+| `venv` | `uv venv .venv --python 3.11` |
+| `lock` | `uv lock` |
+| `install` / `sync` | `uv sync` |
+| `install-dev` / `setup` / `sync-dev` | `uv sync --all-groups` |
+| environment inspection | `orc env status` / `orc env doctor` |
 | development | `orc dev ...` |
 | `run` | `orc dev run` |
 | `test` | `orc dev test` |
@@ -71,8 +78,6 @@ The first migration milestone keeps the same intent as the current Make categori
 | observability UI | `orc obs open --browser firefox|chrome` |
 | maintenance | `orc maintenance ...` |
 | `purge-old-data` | `orc maintenance purge-old-data` |
-
-`ensure-uv` is intentionally not migrated: installing `uv` belongs on the bootstrap side of the uv/ORC boundary.
 
 ## Development session
 
