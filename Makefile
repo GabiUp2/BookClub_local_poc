@@ -11,6 +11,11 @@ red()    { printf '\033[0;31m%s\033[0m\n' "$$1"; }
 endef
 export colour_fns
 
+# Compatibility reminder while ORC reaches orchestration parity.
+# Keep Make working during the migration; see docs/architecture/acr/ACR-0001-python-orchestration-orc.md.
+ifeq ($(MAKELEVEL),0)
+$(info $(shell printf '\033[0;33m%s\033[0m' 'Ay! You shot-focused coffeine infused ragdrat! You had reasons to rewrite orchestration into python ORC! You remember? The ACR-0001!'))
+endif
 
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
@@ -79,15 +84,15 @@ venv: ensure-uv ## Create or update .venv with Python 3.11
 deps-seed: ## Create requirements.in/dev.in if missing (one-time seed)
 	@[ -f requirements.in ] || cat > requirements.in <<-'REQ'
 	httpx==0.27.0
-	pydantic==2.8.0
-	rich==13.7.0
+	pydantic>=2.8.0
+	rich>=13.7.0
 	REQ
 	@[ -f requirements-dev.in ] || cat > requirements-dev.in <<-'REQ'
-	pytest==8.2.0
-	pytest-cov==5.0.0
-	ruff==0.6.0
-	mypy==1.11.0
-	pre-commit==3.7.0
+	pytest>=8.2.0
+	pytest-cov>=5.0.0
+	ruff>=0.6.0
+	mypy>=1.11.0
+	pre-commit>=3.7.0
 	REQ
 
 lock: ensure-uv deps-seed ## Resolve & lock dependencies
