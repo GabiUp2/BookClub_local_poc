@@ -8,14 +8,19 @@ dependencies = [
     "httpx==0.27.0", # for HTTP requests
     "pydantic==2.8.0", # for data validation
     "fastapi==0.119.0", # for the web server
-    "rich==13.7.0", # for progress bars!
+    "rich==13.7.0", # terminal presentation and progress bars
+    "typer>=0.12.5,<1.0", # ORC CLI
     "prometheus-client==0.21.0", # for metrics
     "opentelemetry-sdk==1.38.0", # for tracing
-    "opentelemetry-exporter-otlp-proto-http==1.38.0", # for exporting traces to tempo
+    "opentelemetry-exporter-otlp-proto-http==1.38.0", # existing HTTP OTLP exporter
+    "opentelemetry-exporter-otlp-proto-grpc==1.38.0", # ORC traces -> local Tempo on :4317
     "opentelemetry-instrumentation-fastapi==0.59b0", # for tracing FastAPI
     "opentelemetry-instrumentation-requests==0.59b0", # for tracing HTTP requests
     "opentelemetry-instrumentation-logging==0.59b0", # for tracing logging
 ]
+
+[project.scripts]
+orc = "book_club.orc.main:app"
 
 [dependency-groups]
 dev = [
@@ -28,6 +33,14 @@ dev = [
     "pytest-xdist==3.8.0", # for parallel testing
     "ruff==0.13.3", # for code quality
 ]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "book_club"
+module-root = "src"
 
 [tool.pytest.ini_options]
 addopts = "-q -n auto --dist loadfile"
