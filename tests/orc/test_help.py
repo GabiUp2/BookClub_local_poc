@@ -28,5 +28,5 @@ def test_banner_uses_configured_orc_art_without_ansi_when_color_is_disabled() ->
     rendered = output.getvalue()
     assert "⣿⣿⣿⣿" in rendered
     assert ORC_BANNER.splitlines()[6] in rendered
-    assert "BOOK CLUB ORCHESTRATOR" in rendered
+    assert "ORC-HESTRATOR" in rendered
     assert "\x1b[" not in rendered
