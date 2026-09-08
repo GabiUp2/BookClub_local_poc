@@ -27,7 +27,7 @@ from book_club.orc.runtime import (
 
 app = typer.Typer(
     name="orc",
-    help="Book Club orchestration CLI. Thin wrapper; no application logic belongs here.",
+    help="Book Club development orchestration CLI. Thin wrapper; no application logic belongs here.",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -136,7 +136,9 @@ def _running_compose_services(runtime: OrcRuntime, services: set[str]) -> None:
     running = {line.strip() for line in result.stdout.splitlines() if line.strip()}
     missing = services - running
     if missing:
-        raise RuntimeError(f"Docker Compose services are not running: {', '.join(sorted(missing))}")
+        raise RuntimeError(
+            f"Docker Compose services are not running: {', '.join(sorted(missing))}"
+        )
 
 
 def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
@@ -167,12 +169,12 @@ def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
     path_literal = ",".join(f'"{path}"' for path in standard_paths)
     flag = "-new-tab" if browser is Browser.firefox else "--new-tab"
     script = (
-        f'$urls=@({url_literal}); '
-        f'$paths=@({path_literal}); '
-        f'$browser=(Get-Command {exe} -ErrorAction SilentlyContinue).Source; '
-        f'$proc=Get-Process {process_name} -ErrorAction SilentlyContinue | Select-Object -First 1; '
-        'if (-not $browser -and $proc) {$browser=$proc.Path}; '
-        'if (-not $browser) {foreach ($path in $paths) {if (Test-Path $path) {$browser=$path; break}}}; '
+        f"$urls=@({url_literal}); "
+        f"$paths=@({path_literal}); "
+        f"$browser=(Get-Command {exe} -ErrorAction SilentlyContinue).Source; "
+        f"$proc=Get-Process {process_name} -ErrorAction SilentlyContinue | Select-Object -First 1; "
+        "if (-not $browser -and $proc) {$browser=$proc.Path}; "
+        "if (-not $browser) {foreach ($path in $paths) {if (Test-Path $path) {$browser=$path; break}}}; "
         'if (-not $browser) {Write-Error "Browser not found"; exit 1}; '
         f'Start-Process -FilePath $browser -ArgumentList ($urls | ForEach-Object {{"{flag}", $_}})'
     )
@@ -185,7 +187,7 @@ def _open_observability(runtime: OrcRuntime, browser: Browser) -> None:
 
 
 def _service_table() -> Table:
-    table = Table(title="Book Club development session")
+    table = Table(title="'nBook Club development session")
     table.add_column("Service")
     table.add_column("URL")
     table.add_row("Frontend", "http://localhost:8000/")
@@ -211,11 +213,16 @@ def main(
     ] = None,
     trace_enabled: Annotated[
         bool,
-        typer.Option("--trace", help="Emit ORC OpenTelemetry spans to the configured OTLP endpoint."),
+        typer.Option(
+            "--trace",
+            help="Emit ORC OpenTelemetry spans to the configured OTLP endpoint.",
+        ),
     ] = False,
     verbose: Annotated[
         bool,
-        typer.Option("--verbose", "-v", help="Show executed external commands and action logs."),
+        typer.Option(
+            "--verbose", "-v", help="Show executed external commands and action logs."
+        ),
     ] = False,
     quiet: Annotated[
         bool,
@@ -272,12 +279,24 @@ def env_status(ctx: typer.Context) -> None:
         detail = result.stdout.strip() or result.stderr.strip() or uv
         table.add_row("uv", state, detail)
     else:
-        table.add_row("uv", "MISSING", "Install uv before running ORC bootstrap-dependent commands")
+        table.add_row(
+            "uv",
+            "MISSING",
+            "Install uv before running ORC bootstrap-dependent commands",
+        )
 
     table.add_row("Python", "OK", sys.version.split()[0])
-    table.add_row("pyproject.toml", "OK" if Path("pyproject.toml").exists() else "MISSING", str(Path("pyproject.toml")))
-    table.add_row("uv.lock", "OK" if Path("uv.lock").exists() else "MISSING", str(Path("uv.lock")))
-    table.add_row(".venv", "OK" if Path(".venv").exists() else "MISSING", str(Path(".venv")))
+    table.add_row(
+        "pyproject.toml",
+        "OK" if Path("pyproject.toml").exists() else "MISSING",
+        str(Path("pyproject.toml")),
+    )
+    table.add_row(
+        "uv.lock", "OK" if Path("uv.lock").exists() else "MISSING", str(Path("uv.lock"))
+    )
+    table.add_row(
+        ".venv", "OK" if Path(".venv").exists() else "MISSING", str(Path(".venv"))
+    )
     runtime.console.print(table)
 
 
@@ -294,7 +313,11 @@ def env_doctor(ctx: typer.Context) -> None:
     }
     failed = [name for name, ok in checks.items() if not ok]
     for name, ok in checks.items():
-        runtime.emit("success" if ok else "warning", "env.doctor", f"{name}: {'OK' if ok else 'missing'}")
+        runtime.emit(
+            "success" if ok else "warning",
+            "env.doctor",
+            f"{name}: {'OK' if ok else 'missing'}",
+        )
     if failed:
         raise RuntimeError(
             "uv-managed environment is not ready: "
@@ -355,7 +378,12 @@ def dev_lint(ctx: typer.Context) -> None:
     uv = _uv()
     if uv is None:
         raise RuntimeError("uv is not available; bootstrap the project with uv first")
-    run(_runtime(ctx), "dev.lint", "Linting repository with Ruff", [uv, "run", "ruff", "check", "."])
+    run(
+        _runtime(ctx),
+        "dev.lint",
+        "Linting repository with Ruff",
+        [uv, "run", "ruff", "check", "."],
+    )
 
 
 @dev_app.command("format")
@@ -364,8 +392,18 @@ def dev_format(ctx: typer.Context) -> None:
     if uv is None:
         raise RuntimeError("uv is not available; bootstrap the project with uv first")
     runtime = _runtime(ctx)
-    run(runtime, "dev.format-fix", "Applying Ruff fixes", [uv, "run", "ruff", "check", "--fix", "."])
-    run(runtime, "dev.format", "Formatting repository with Ruff", [uv, "run", "ruff", "format", "."])
+    run(
+        runtime,
+        "dev.format-fix",
+        "Applying Ruff fixes",
+        [uv, "run", "ruff", "check", "--fix", "."],
+    )
+    run(
+        runtime,
+        "dev.format",
+        "Formatting repository with Ruff",
+        [uv, "run", "ruff", "format", "."],
+    )
 
 
 @dev_app.command("typecheck")
@@ -373,7 +411,12 @@ def dev_typecheck(ctx: typer.Context) -> None:
     uv = _uv()
     if uv is None:
         raise RuntimeError("uv is not available; bootstrap the project with uv first")
-    run(_runtime(ctx), "dev.typecheck", "Type-checking src with mypy", [uv, "run", "mypy", "src"])
+    run(
+        _runtime(ctx),
+        "dev.typecheck",
+        "Type-checking src with mypy",
+        [uv, "run", "mypy", "src"],
+    )
 
 
 @dev_app.command("precommit")
@@ -389,12 +432,14 @@ def dev_precommit(ctx: typer.Context) -> None:
     )
 
 
-@dev_app.command("session")
+@dev_app.command("start")
 def dev_session(
     ctx: typer.Context,
     browser: Annotated[
         Browser,
-        typer.Option("--browser", help="Optionally open development/observability tabs."),
+        typer.Option(
+            "--browser", help="Optionally open development/observability tabs."
+        ),
     ] = Browser.none,
 ) -> None:
     """Bring up the normal local development stack and verify it before coding."""
@@ -403,11 +448,40 @@ def dev_session(
     commit = _git_value(runtime, "rev-parse", "--short", "HEAD")
     runtime.emit("info", "dev.session", f"Starting session on {branch}@{commit}")
 
-    run(runtime, "dev.session.compose", "Starting Docker Compose development stack", ["docker", "compose", "up", "-d"])
-    _wait_http(runtime, "dev.session.backend", "Waiting for backend health", "http://localhost:8010/health", timeout=120)
-    _wait_http(runtime, "dev.session.frontend", "Waiting for frontend", "http://localhost:8000/", timeout=180)
-    _wait_http(runtime, "dev.session.grafana", "Waiting for Grafana", "http://localhost:3000/api/health", timeout=90)
-    _wait_http(runtime, "dev.session.prometheus", "Waiting for Prometheus", "http://localhost:9090/-/ready", timeout=90)
+    run(
+        runtime,
+        "dev.session.compose",
+        "Starting Docker Compose development stack",
+        ["docker", "compose", "up", "-d"],
+    )
+    _wait_http(
+        runtime,
+        "dev.session.backend",
+        "Waiting for backend health",
+        "http://localhost:8010/health",
+        timeout=120,
+    )
+    _wait_http(
+        runtime,
+        "dev.session.frontend",
+        "Waiting for frontend",
+        "http://localhost:8000/",
+        timeout=180,
+    )
+    _wait_http(
+        runtime,
+        "dev.session.grafana",
+        "Waiting for Grafana",
+        "http://localhost:3000/api/health",
+        timeout=90,
+    )
+    _wait_http(
+        runtime,
+        "dev.session.prometheus",
+        "Waiting for Prometheus",
+        "http://localhost:9090/-/ready",
+        timeout=90,
+    )
     _wait_http(
         runtime,
         "dev.session.loki",
@@ -416,10 +490,19 @@ def dev_session(
         timeout=90,
         headers={"X-Scope-OrgID": "local"},
     )
-    _wait_http(runtime, "dev.session.pushgateway", "Waiting for Pushgateway", "http://localhost:9091/-/ready", timeout=90)
+    _wait_http(
+        runtime,
+        "dev.session.pushgateway",
+        "Waiting for Pushgateway",
+        "http://localhost:9091/-/ready",
+        timeout=90,
+    )
     _open_observability(runtime, browser)
+    runtime.console.print("")
     runtime.console.print(_service_table())
-    runtime.emit("success", "dev.session", f"Development session ready on {branch}@{commit}")
+    runtime.emit(
+        "success", "dev.session", f"Development session ready on {branch}@{commit}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -442,7 +525,12 @@ def build_dist(ctx: typer.Context) -> None:
     uv = _uv()
     if uv is None:
         raise RuntimeError("uv is not available; bootstrap the project with uv first")
-    run(_runtime(ctx), "build.dist", "Building source and wheel distributions", [uv, "build"])
+    run(
+        _runtime(ctx),
+        "build.dist",
+        "Building source and wheel distributions",
+        [uv, "build"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -534,7 +622,10 @@ def test_metrics_verify(ctx: typer.Context) -> None:
         "Checking verification metrics in Pushgateway",
         "http://localhost:9091/metrics",
     )
-    if 'job="pytest_verify"' not in pushgateway.text or "test_duration_seconds{" not in pushgateway.text:
+    if (
+        'job="pytest_verify"' not in pushgateway.text
+        or "test_duration_seconds{" not in pushgateway.text
+    ):
         raise RuntimeError("Verification metrics were not found in Pushgateway")
 
     targets = _check_http(
@@ -588,7 +679,9 @@ def test_metrics_verify(ctx: typer.Context) -> None:
     )
     for job in ("pytest_verify", "pytest_cleanup_validation"):
         httpx.delete(f"http://localhost:9091/metrics/job/{job}", timeout=5.0)
-    runtime.emit("success", "test-metrics.verify", "Test metrics pipeline verification complete")
+    runtime.emit(
+        "success", "test-metrics.verify", "Test metrics pipeline verification complete"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -596,10 +689,14 @@ def test_metrics_verify(ctx: typer.Context) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _download_file(runtime: OrcRuntime, action: str, description: str, url: str, target: Path) -> None:
+def _download_file(
+    runtime: OrcRuntime, action: str, description: str, url: str, target: Path
+) -> None:
     with runtime.action(action, description):
         with runtime.console.status(f"[cyan]{description}[/cyan]"):
-            with httpx.stream("GET", url, follow_redirects=True, timeout=60.0) as response:
+            with httpx.stream(
+                "GET", url, follow_redirects=True, timeout=60.0
+            ) as response:
                 response.raise_for_status()
                 with target.open("wb") as handle:
                     for chunk in response.iter_bytes():
@@ -617,7 +714,12 @@ def _os_release() -> dict[str, str]:
 
 
 def _compose_install_apt(runtime: OrcRuntime) -> None:
-    run(runtime, "compose.apt-update", "Updating APT metadata", ["sudo", "apt", "update"])
+    run(
+        runtime,
+        "compose.apt-update",
+        "Updating APT metadata",
+        ["sudo", "apt", "update"],
+    )
     run(
         runtime,
         "compose.apt-prereqs",
@@ -646,9 +748,22 @@ def _compose_install_apt(runtime: OrcRuntime) -> None:
             runtime,
             "compose.gpg-install",
             "Installing Docker repository signing key",
-            ["sudo", "gpg", "--dearmor", "--yes", "-o", "/etc/apt/keyrings/docker.gpg", str(key)],
+            [
+                "sudo",
+                "gpg",
+                "--dearmor",
+                "--yes",
+                "-o",
+                "/etc/apt/keyrings/docker.gpg",
+                str(key),
+            ],
         )
-        run(runtime, "compose.gpg-permissions", "Setting Docker key permissions", ["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.gpg"])
+        run(
+            runtime,
+            "compose.gpg-permissions",
+            "Setting Docker key permissions",
+            ["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.gpg"],
+        )
 
         architecture = run(
             runtime,
@@ -660,7 +775,9 @@ def _compose_install_apt(runtime: OrcRuntime) -> None:
         release = _os_release()
         codename = release.get("UBUNTU_CODENAME") or release.get("VERSION_CODENAME")
         if not codename:
-            raise RuntimeError("Could not determine Ubuntu codename from /etc/os-release")
+            raise RuntimeError(
+                "Could not determine Ubuntu codename from /etc/os-release"
+            )
         repo_file.write_text(
             f"deb [arch={architecture} signed-by=/etc/apt/keyrings/docker.gpg] "
             f"https://download.docker.com/linux/ubuntu {codename} stable\n",
@@ -670,10 +787,22 @@ def _compose_install_apt(runtime: OrcRuntime) -> None:
             runtime,
             "compose.repo-install",
             "Installing Docker APT repository definition",
-            ["sudo", "install", "-m", "0644", str(repo_file), "/etc/apt/sources.list.d/docker.list"],
+            [
+                "sudo",
+                "install",
+                "-m",
+                "0644",
+                str(repo_file),
+                "/etc/apt/sources.list.d/docker.list",
+            ],
         )
 
-    run(runtime, "compose.apt-refresh", "Refreshing APT metadata with Docker repository", ["sudo", "apt", "update"])
+    run(
+        runtime,
+        "compose.apt-refresh",
+        "Refreshing APT metadata with Docker repository",
+        ["sudo", "apt", "update"],
+    )
     install = run(
         runtime,
         "compose.docker-packages",
@@ -692,7 +821,11 @@ def _compose_install_apt(runtime: OrcRuntime) -> None:
         check=False,
     )
     if install.returncode != 0:
-        runtime.emit("warning", "compose.docker-packages", "Full Docker package install failed; trying Compose plugin only")
+        runtime.emit(
+            "warning",
+            "compose.docker-packages",
+            "Full Docker package install failed; trying Compose plugin only",
+        )
         run(
             runtime,
             "compose.plugin",
@@ -761,7 +894,9 @@ def compose_install(
         check=False,
     )
     if existing.returncode == 0:
-        runtime.emit("success", "compose.install", "Docker Compose v2 is already installed")
+        runtime.emit(
+            "success", "compose.install", "Docker Compose v2 is already installed"
+        )
         return
 
     if shutil.which("apt") and Path("/etc/os-release").exists():
@@ -787,7 +922,12 @@ def obs_quick(ctx: typer.Context) -> None:
         "http://localhost:3100/ready",
         headers={"X-Scope-OrgID": "local"},
     )
-    _check_http(runtime, "obs.quick.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
+    _check_http(
+        runtime,
+        "obs.quick.grafana",
+        "Checking Grafana health",
+        "http://localhost:3000/api/health",
+    )
 
 
 @obs_app.command("logs")
@@ -799,7 +939,11 @@ def obs_logs(ctx: typer.Context) -> None:
         response = httpx.get(
             "http://localhost:3100/loki/api/v1/query_range",
             headers={"X-Scope-OrgID": "local"},
-            params={"query": '{filename="main.py"}', "start": str(start_ns), "end": str(end_ns)},
+            params={
+                "query": '{filename="main.py"}',
+                "start": str(start_ns),
+                "end": str(end_ns),
+            },
             timeout=10.0,
         )
         response.raise_for_status()
@@ -820,9 +964,24 @@ def obs_verify(ctx: typer.Context) -> None:
         "http://localhost:3100/ready",
         headers={"X-Scope-OrgID": "local"},
     )
-    _check_http(runtime, "obs.verify.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
-    _check_http(runtime, "obs.verify.alloy", "Checking Alloy HTTP endpoint", "http://localhost:12345/")
-    run(runtime, "obs.verify.generate-log", "Generating a development test log", [sys.executable, "main.py"])
+    _check_http(
+        runtime,
+        "obs.verify.grafana",
+        "Checking Grafana health",
+        "http://localhost:3000/api/health",
+    )
+    _check_http(
+        runtime,
+        "obs.verify.alloy",
+        "Checking Alloy HTTP endpoint",
+        "http://localhost:12345/",
+    )
+    run(
+        runtime,
+        "obs.verify.generate-log",
+        "Generating a development test log",
+        [sys.executable, "main.py"],
+    )
     time.sleep(3)
     labels = _check_http(
         runtime,
@@ -846,16 +1005,47 @@ def obs_verify(ctx: typer.Context) -> None:
 @obs_app.command("integration")
 def obs_integration(ctx: typer.Context) -> None:
     runtime = _runtime(ctx)
-    run(runtime, "obs.integration.compose", "Bringing up complete stack", ["docker", "compose", "up", "-d"])
-    _wait_http(runtime, "obs.integration.server", "Waiting for server", "http://localhost:8010/health", timeout=120)
-    _wait_http(runtime, "obs.integration.app", "Waiting for frontend", "http://localhost:8000/", timeout=180)
+    run(
+        runtime,
+        "obs.integration.compose",
+        "Bringing up complete stack",
+        ["docker", "compose", "up", "-d"],
+    )
+    _wait_http(
+        runtime,
+        "obs.integration.server",
+        "Waiting for server",
+        "http://localhost:8010/health",
+        timeout=120,
+    )
+    _wait_http(
+        runtime,
+        "obs.integration.app",
+        "Waiting for frontend",
+        "http://localhost:8000/",
+        timeout=180,
+    )
     run(
         runtime,
         "obs.integration.internal-health",
         "Checking frontend-to-server connectivity inside Docker",
-        ["docker", "compose", "exec", "-T", "bookclub-app", "wget", "-qO-", "http://bookclub-server:8010/health"],
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "bookclub-app",
+            "wget",
+            "-qO-",
+            "http://bookclub-server:8010/health",
+        ],
     )
-    _check_http(runtime, "obs.integration.metrics", "Checking server metrics endpoint", "http://localhost:8010/metrics")
+    _check_http(
+        runtime,
+        "obs.integration.metrics",
+        "Checking server metrics endpoint",
+        "http://localhost:8010/metrics",
+    )
     targets = _check_http(
         runtime,
         "obs.integration.prometheus",
@@ -863,7 +1053,8 @@ def obs_integration(ctx: typer.Context) -> None:
         "http://localhost:9090/api/v1/targets",
     ).json()
     healthy_server = any(
-        target.get("labels", {}).get("job") == "bookclub-server" and target.get("health") == "up"
+        target.get("labels", {}).get("job") == "bookclub-server"
+        and target.get("health") == "up"
         for target in targets.get("data", {}).get("activeTargets", [])
     )
     if not healthy_server:
@@ -875,7 +1066,12 @@ def obs_integration(ctx: typer.Context) -> None:
         "http://localhost:3100/ready",
         headers={"X-Scope-OrgID": "local"},
     )
-    _check_http(runtime, "obs.integration.grafana", "Checking Grafana health", "http://localhost:3000/api/health")
+    _check_http(
+        runtime,
+        "obs.integration.grafana",
+        "Checking Grafana health",
+        "http://localhost:3000/api/health",
+    )
     runtime.emit("success", "obs.integration", "Integration verification complete")
 
 
@@ -895,7 +1091,9 @@ def obs_open(
 @maintenance_app.command("purge-old-data")
 def maintenance_purge_old_data(
     ctx: typer.Context,
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation.")] = False,
+    yes: Annotated[
+        bool, typer.Option("--yes", "-y", help="Skip confirmation.")
+    ] = False,
 ) -> None:
     runtime = _runtime(ctx)
     runtime.emit(
@@ -911,14 +1109,34 @@ def maintenance_purge_old_data(
         runtime,
         "maintenance.purge.stop",
         "Stopping data-owning services",
-        ["docker", "compose", "stop", "prometheus", "loki", "pushgateway", "qdrant", "grafana", "alloy"],
+        [
+            "docker",
+            "compose",
+            "stop",
+            "prometheus",
+            "loki",
+            "pushgateway",
+            "qdrant",
+            "grafana",
+            "alloy",
+        ],
         check=False,
     )
-    with runtime.action("maintenance.purge.files", "Removing persisted local observability/vector data"):
-        for pattern in ["logs/*.log", "src/book_club/app/logs/*.log", "src/book_club/server/logs/*.log"]:
+    with runtime.action(
+        "maintenance.purge.files", "Removing persisted local observability/vector data"
+    ):
+        for pattern in [
+            "logs/*.log",
+            "src/book_club/app/logs/*.log",
+            "src/book_club/server/logs/*.log",
+        ]:
             for raw_path in glob.glob(pattern):
                 Path(raw_path).unlink(missing_ok=True)
-        for directory in ["observability/prometheus/data", "observability/loki/data", "data/qdrant"]:
+        for directory in [
+            "observability/prometheus/data",
+            "observability/loki/data",
+            "data/qdrant",
+        ]:
             path = Path(directory)
             if path.exists():
                 for child in path.iterdir():
@@ -933,9 +1151,26 @@ def maintenance_purge_old_data(
         runtime,
         "maintenance.purge.start",
         "Restarting cleaned services",
-        ["docker", "compose", "up", "-d", "prometheus", "loki", "pushgateway", "qdrant", "grafana", "alloy"],
+        [
+            "docker",
+            "compose",
+            "up",
+            "-d",
+            "prometheus",
+            "loki",
+            "pushgateway",
+            "qdrant",
+            "grafana",
+            "alloy",
+        ],
     )
-    _wait_http(runtime, "maintenance.purge.prometheus", "Waiting for Prometheus", "http://localhost:9090/-/ready", timeout=90)
+    _wait_http(
+        runtime,
+        "maintenance.purge.prometheus",
+        "Waiting for Prometheus",
+        "http://localhost:9090/-/ready",
+        timeout=90,
+    )
     _wait_http(
         runtime,
         "maintenance.purge.loki",
@@ -944,8 +1179,20 @@ def maintenance_purge_old_data(
         timeout=90,
         headers={"X-Scope-OrgID": "local"},
     )
-    _wait_http(runtime, "maintenance.purge.pushgateway", "Waiting for Pushgateway", "http://localhost:9091/-/ready", timeout=90)
-    _wait_http(runtime, "maintenance.purge.grafana", "Waiting for Grafana", "http://localhost:3000/api/health", timeout=90)
+    _wait_http(
+        runtime,
+        "maintenance.purge.pushgateway",
+        "Waiting for Pushgateway",
+        "http://localhost:9091/-/ready",
+        timeout=90,
+    )
+    _wait_http(
+        runtime,
+        "maintenance.purge.grafana",
+        "Waiting for Grafana",
+        "http://localhost:3000/api/health",
+        timeout=90,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -989,7 +1236,7 @@ def entrypoint() -> None:
         typer.echo(str(exc), err=True)
         raise SystemExit(exc.result.returncode) from exc
     except (httpx.HTTPError, RuntimeError) as exc:
-        typer.echo(f"ORC failed: {exc}", err=True)
+        typer.echo(f"ORC was slained by: {exc}", err=True)
         raise SystemExit(1) from exc
 
 
